@@ -46,6 +46,12 @@ go run ./cmd/api
 make test
 ```
 
+## Auto-deploy VPS
+
+Hay deploy automático por branch (`main` y `develop`) usando GitHub Actions + SSH + systemd, ambos hacia producción.
+
+Guía completa: [docs/deploy-vps.md](docs/deploy-vps.md)
+
 ## Troubleshooting
 
 - `pq: bind message ...` errors: ensure `DB_DISABLE_PREPARED_STATEMENTS` is `true` or switch your pool to session mode.
