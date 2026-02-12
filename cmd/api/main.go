@@ -23,6 +23,12 @@ import (
 	"github.com/google/uuid"
 )
 
+var (
+	Version   = "dev"
+	BuildTime = "unknown"
+	GitCommit = "unknown"
+)
+
 type responseStatusWriter struct {
 	gin.ResponseWriter
 	status int
@@ -65,8 +71,16 @@ func main() {
 	})
 	log := logger.Get()
 
+	healthVersion := Version
+	if healthVersion == "" || healthVersion == "dev" {
+		healthVersion = cfg.App.Version
+	}
+
 	log.WithField("app_name", cfg.App.Name).
 		WithField("version", cfg.App.Version).
+		WithField("build_version", Version).
+		WithField("build_time", BuildTime).
+		WithField("git_commit", GitCommit).
 		WithField("environment", cfg.Server.Environment).
 		Info("Starting application")
 
@@ -166,7 +180,7 @@ func main() {
 	dashboardHandler := handlers.NewDashboardHandler()
 
 	// Configurar rutas
-	router := handlers.NewRouter(engine)
+	router := handlers.NewRouter(engine, healthVersion)
 	router.SetupRoutes(authHandler, apartmentHandler, invoiceHandler, reservationHandler, communicationHandler, packageHandler, spaceHandler, adminHandler, dashboardHandler)
 
 	log.WithField("port", cfg.Server.Port).Info("Starting HTTP server")

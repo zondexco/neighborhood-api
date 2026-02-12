@@ -8,13 +8,15 @@ import (
 
 // Router estructura para manejar rutas
 type Router struct {
-	engine *gin.Engine
+	engine     *gin.Engine
+	appVersion string
 }
 
 // NewRouter crea un nuevo router
-func NewRouter(engine *gin.Engine) *Router {
+func NewRouter(engine *gin.Engine, appVersion string) *Router {
 	return &Router{
-		engine: engine,
+		engine:     engine,
+		appVersion: appVersion,
 	}
 }
 
@@ -30,11 +32,9 @@ func (r *Router) SetupRoutes(
 	adminHandler *AdminHandler,
 	dashboardHandler *DashboardHandler, // Nuevo handler inyectado
 ) {
-	// Health check
-	r.engine.GET("/health", Health)
-
 	// API v1
 	v1 := r.engine.Group("/api/v1")
+	v1.GET("/health", Health(r.appVersion))
 
 	// Auth routes (sin protección)
 	auth := v1.Group("/auth")
