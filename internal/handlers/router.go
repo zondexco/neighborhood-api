@@ -123,6 +123,9 @@ func (r *Router) SetupRoutes(
 		{
 			packages.POST("", packageHandler.Create)
 			packages.GET("", packageHandler.List)
+			packages.GET("/:id", packageHandler.GetByID)
+			packages.PUT("/:id", packageHandler.Update)
+			packages.DELETE("/:id", packageHandler.Delete)
 			packages.PUT("/:id/deliver", packageHandler.MarkDelivered)
 			packages.POST("/:id/notify", packageHandler.Notify)
 		}

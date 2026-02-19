@@ -2,8 +2,10 @@ package repositories
 
 import (
 	"context"
-	"neighborhood-api/internal/models"
 	"time"
+
+	"neighborhood-api/internal/models"
+	"neighborhood-api/pkg/dto"
 )
 
 // UserRepository interfaz para operaciones con usuarios
@@ -144,9 +146,12 @@ type CommunicationRepository interface {
 // PackageRepository interfaz para operaciones con paquetes
 type PackageRepository interface {
 	FindByID(ctx context.Context, packageID, condominioID string) (*models.Package, error)
+	ListWithFilters(ctx context.Context, condominioID string, f dto.PackageFilter) ([]*models.Package, int, error)
 	GetByCondominio(ctx context.Context, condominioID string, page, pageSize int) ([]*models.Package, int, error)
 	GetByApartment(ctx context.Context, condominioID, apartmentID string, page, pageSize int) ([]*models.Package, int, error)
 	Create(ctx context.Context, pkg *models.Package) error
+	Update(ctx context.Context, packageID, condominioID string, fields map[string]interface{}) (*models.Package, error)
+	Delete(ctx context.Context, packageID, condominioID string) error
 	MarkDelivered(ctx context.Context, packageID, condominioID string) error
 }
 

@@ -33,6 +33,7 @@ type LoginResponse struct {
 	CondominioName string    `json:"condominio_nombre"`
 	Role           string    `json:"role"`
 	IsAdmin        bool      `json:"is_admin"`
+	ApartmentID    string    `json:"apartment_id"` // "" si el usuario no tiene apartamento
 	Permissions    []string  `json:"permissions"`
 	ExpiresAt      time.Time `json:"expires_at"`
 }
@@ -309,6 +310,25 @@ type CreatePackageRequest struct {
 	Resident    string  `json:"resident" binding:"required"`
 	Carrier     string  `json:"carrier" binding:"required"`
 	Notes       *string `json:"notes,omitempty"`
+}
+
+type UpdatePackageRequest struct {
+	Notes       *string `json:"notes,omitempty"`
+	Resident    *string `json:"resident,omitempty"`    // admin only
+	Carrier     *string `json:"carrier,omitempty"`     // admin only
+	ApartmentID *string `json:"apartment_id,omitempty"` // admin only
+}
+
+// PackageFilter parámetros de filtrado para listado de paquetes
+type PackageFilter struct {
+	Status      string    // "pending" | "delivered" | "" (todos)
+	ApartmentID string    // UUID | "" (todos) — forzado al del JWT para residentes
+	Carrier     string    // exacto | ""
+	Search      string    // ILIKE en resident + carrier
+	DateFrom    time.Time // zero = sin límite inferior
+	DateTo      time.Time // zero = sin límite superior
+	Page        int
+	PageSize    int
 }
 
 type PackageResponse struct {
