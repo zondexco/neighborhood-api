@@ -131,11 +131,13 @@ func (s *AuthServiceImpl) Login(ctx context.Context, req *dto.LoginRequest, cond
 		RefreshToken:   refreshToken,
 		UserID:         user.ID,
 		Email:          user.Email,
+		Nombre:         user.Nombre,
+		Apellido:       user.Apellido,
 		CondominioID:   user.CondominioID,
 		CondominioName: condominioName,
 		Role:           user.Rol,
 		IsAdmin:        isAdmin,
-		Permissions:    []string{}, // TODO: Cargar permisos específicos del rol
+		Permissions:    []string{},
 		ExpiresAt:      expiresAt,
 	}, nil
 }
@@ -204,11 +206,13 @@ func (s *AuthServiceImpl) RefreshToken(ctx context.Context, refreshToken string)
 		RefreshToken:   newRefreshToken,
 		UserID:         user.ID,
 		Email:          user.Email,
+		Nombre:         user.Nombre,
+		Apellido:       user.Apellido,
 		CondominioID:   user.CondominioID,
 		CondominioName: condominioName,
 		Role:           user.Rol,
 		IsAdmin:        isAdmin,
-		Permissions:    []string{}, // TODO: Cargar permisos específicos del rol
+		Permissions:    []string{},
 		ExpiresAt:      expiresAt,
 	}, nil
 }

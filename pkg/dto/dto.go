@@ -27,6 +27,8 @@ type LoginResponse struct {
 	RefreshToken   string    `json:"refresh_token"`
 	UserID         string    `json:"user_id"`
 	Email          string    `json:"email"`
+	Nombre         string    `json:"nombre"`
+	Apellido       string    `json:"apellido"`
 	CondominioID   string    `json:"condominio_id"`
 	CondominioName string    `json:"condominio_nombre"`
 	Role           string    `json:"role"`
@@ -336,4 +338,38 @@ type SuccessResponse struct {
 type PaginationParams struct {
 	Page     int `form:"page,default=1" binding:"min=1"`
 	PageSize int `form:"page_size,default=10" binding:"min=1,max=100"`
+}
+
+// ========== Dashboard DTOs ==========
+
+// DashboardPackageItem resumen de un paquete pendiente
+type DashboardPackageItem struct {
+	ID          string    `json:"id"`
+	Carrier     string    `json:"carrier"`
+	ReceivedAt  time.Time `json:"received_at"`
+	Apartment   string    `json:"apartment"`
+}
+
+// DashboardReservation próxima reserva del residente
+type DashboardReservation struct {
+	ID          string    `json:"id"`
+	EspacioID   string    `json:"espacio_id"`
+	FechaInicio time.Time `json:"fecha_inicio"`
+	FechaFin    time.Time `json:"fecha_fin"`
+	Estado      string    `json:"estado"`
+}
+
+// DashboardNewsItem comunicado reciente
+type DashboardNewsItem struct {
+	ID     string    `json:"id"`
+	Titulo string    `json:"titulo"`
+	Fecha  time.Time `json:"fecha"`
+}
+
+// DashboardSummaryResponse resumen del dashboard para el residente
+type DashboardSummaryResponse struct {
+	PackagesPending int                    `json:"packages_pending"`
+	PendingPackages []DashboardPackageItem `json:"pending_packages"`
+	NextReservation *DashboardReservation  `json:"next_reservation"`
+	RecentNews      []DashboardNewsItem    `json:"recent_news"`
 }

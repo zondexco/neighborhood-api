@@ -177,7 +177,7 @@ func main() {
 	packageHandler := handlers.NewPackageHandler(packageService)
 	spaceHandler := handlers.NewSpaceHandler(spaceService)
 	adminHandler := handlers.NewAdminHandler(userRepo, apartmentRepo, communicationRepo, condominioRepo, log)
-	dashboardHandler := handlers.NewDashboardHandler()
+	dashboardHandler := handlers.NewDashboardHandler(userRepo, packageService, reservationService, communicationService)
 
 	// Configurar rutas
 	router := handlers.NewRouter(engine, healthVersion)

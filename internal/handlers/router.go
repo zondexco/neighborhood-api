@@ -127,6 +127,12 @@ func (r *Router) SetupRoutes(
 			packages.POST("/:id/notify", packageHandler.Notify)
 		}
 
+		// Dashboard routes (for authenticated residents)
+		dashboard := protected.Group("/dashboard")
+		{
+			dashboard.GET("/summary", dashboardHandler.GetResidentSummary)
+		}
+
 		// Admin routes
 		admin := protected.Group("/admin")
 		admin.Use(middleware.RequireRoles("administrador", "admin"))
