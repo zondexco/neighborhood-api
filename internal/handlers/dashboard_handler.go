@@ -68,27 +68,30 @@ func (h *DashboardHandler) GetResidentSummary(c *gin.Context) {
 	packagesPendingCount := 0
 
 	if user.ApartmentID != nil && *user.ApartmentID != "" {
-		packages, _, err := h.packageService.ListByApartment(c.Request.Context(), condominioID, *user.ApartmentID, 1, 10)
+		packages, _, err := h.packageService.ListWithFilters(c.Request.Context(), condominioID, dto.PackageFilter{
+			ApartmentID: *user.ApartmentID,
+			Status:      "pending",
+			Page:        1,
+			PageSize:    10,
+		})
 		if err != nil {
 			h.log.WithError(err).Warn("error fetching packages for dashboard — continuing without packages")
 		} else {
+			packagesPendingCount = len(packages)
 			for _, pkg := range packages {
-				if pkg.DeliveredAt == nil {
-					packagesPendingCount++
-					label := ""
-					if pkg.ApartmentNumber != nil {
-						label = *pkg.ApartmentNumber
-					}
-					if pkg.ApartmentTower != nil && *pkg.ApartmentTower != "" {
-						label = "Torre " + *pkg.ApartmentTower + " - " + label
-					}
-					pendingPackages = append(pendingPackages, dto.DashboardPackageItem{
-						ID:         pkg.ID,
-						Carrier:    pkg.Carrier,
-						ReceivedAt: pkg.ReceivedAt,
-						Apartment:  label,
-					})
+				label := ""
+				if pkg.ApartmentNumber != nil {
+					label = *pkg.ApartmentNumber
 				}
+				if pkg.ApartmentTower != nil && *pkg.ApartmentTower != "" {
+					label = "Torre " + *pkg.ApartmentTower + " - " + label
+				}
+				pendingPackages = append(pendingPackages, dto.DashboardPackageItem{
+					ID:         pkg.ID,
+					Carrier:    pkg.Carrier,
+					ReceivedAt: pkg.ReceivedAt,
+					Apartment:  label,
+				})
 			}
 		}
 	}

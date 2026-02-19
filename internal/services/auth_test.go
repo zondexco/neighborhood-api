@@ -229,7 +229,7 @@ func TestAuthServiceValidateToken(t *testing.T) {
 	jwtManager := utils.NewJWTManager(jwtConfig)
 
 	// Generar token válido
-	token, err := jwtManager.GenerateToken("user-001", "test@example.com", "cond-001", "residente")
+	token, err := jwtManager.GenerateToken("user-001", "test@example.com", "cond-001", "residente", "")
 	if err != nil {
 		t.Errorf("Error generating token: %v", err)
 	}
