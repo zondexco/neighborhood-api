@@ -1,13 +1,11 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 
-	"neighborhood-api/internal/models"
 	"neighborhood-api/internal/services"
 	"neighborhood-api/pkg/dto"
 )
@@ -24,83 +22,22 @@ func NewCommunicationHandler(service services.CommunicationService) *Communicati
 	}
 }
 
-// CreateCommunication crea un nuevo comunicado
-// @Summary Create a new communication
-// @Description Crea un nuevo comunicado
-// @Tags Communications
-// @Accept json
-// @Produce json
-// @Param body body dto.CreateCommunicationRequest true "Communication data"
-// @Success 201 {object} dto.CommunicationResponse
-// @Failure 400 {object} map[string]string
-// @Failure 401 {object} map[string]string
-// @Router /api/v1/communications [post]
-func (h *CommunicationHandler) CreateCommunication(c *gin.Context) {
-	var request dto.CreateCommunicationRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		BadRequest(c, "invalid request")
-		return
-	}
-
-	// Obtener condominioID del contexto JWT
-	condominioID, exists := c.Get("condominio_id")
-	if !exists {
-		Unauthorized(c, "unauthorized")
-		return
-	}
-
-	// Obtener usuarioID del contexto JWT (será el autor)
-	usuarioID, exists := c.Get("user_id")
-	if !exists {
-		Unauthorized(c, "unauthorized")
-		return
-	}
-
-	communication, err := h.service.Create(c.Request.Context(), request, condominioID.(string), usuarioID.(string))
-	if err != nil {
-		BadRequest(c, err.Error())
-		return
-	}
-
-	c.JSON(http.StatusCreated, toCommunicationResponse(communication))
-}
-
-// GetCommunication obtiene un comunicado por ID
-func (h *CommunicationHandler) GetCommunication(c *gin.Context) {
-	communicationID := c.Param("id")
-
-	// Obtener condominioID del contexto JWT
-	condominioID, exists := c.Get("condominio_id")
-	if !exists {
-		Unauthorized(c, "unauthorized")
-		return
-	}
-
-	communication, err := h.service.GetByID(c.Request.Context(), communicationID, condominioID.(string))
-	if err != nil {
-		if errors.Is(err, errors.New("communication not found")) {
-			NotFound(c, "not found")
-		} else {
-			InternalServerError(c, "internal server error")
-		}
-		return
-	}
-
-	c.JSON(http.StatusOK, toCommunicationResponse(communication))
-}
-
-// ListCommunications obtiene comunicados con paginación
+// ListCommunications obtiene comunicados visibles para el usuario autenticado
 func (h *CommunicationHandler) ListCommunications(c *gin.Context) {
-	// Obtener condominioID del contexto JWT
 	condominioID, exists := c.Get("condominio_id")
 	if !exists {
 		Unauthorized(c, "unauthorized")
 		return
 	}
+	userID, exists := c.Get("user_id")
+	if !exists {
+		Unauthorized(c, "unauthorized")
+		return
+	}
+	userRole, _ := c.Get("role")
 
-	// Obtener parámetros de paginación
 	page := 1
-	pageSize := 10
+	pageSize := 20
 	if p := c.Query("page"); p != "" {
 		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
 			page = parsed
@@ -112,15 +49,37 @@ func (h *CommunicationHandler) ListCommunications(c *gin.Context) {
 		}
 	}
 
-	communications, total, err := h.service.List(c.Request.Context(), condominioID.(string), page, pageSize)
+	communications, total, err := h.service.ListVisible(
+		c.Request.Context(),
+		condominioID.(string),
+		userID.(string),
+		userRole.(string),
+		page,
+		pageSize,
+	)
 	if err != nil {
 		InternalServerError(c, "internal server error")
 		return
 	}
 
-	responses := make([]dto.CommunicationResponse, len(communications))
-	for i, comm := range communications {
-		responses[i] = toCommunicationResponse(comm)
+	responses := make([]gin.H, 0, len(communications))
+	for _, comm := range communications {
+		responses = append(responses, gin.H{
+			"id":                  comm.ID,
+			"titulo":              comm.Titulo,
+			"contenido":           comm.Contenido,
+			"fecha":               comm.Fecha,
+			"autor":               comm.Autor,
+			"condominio_id":       comm.CondominioID,
+			"programado_para":     comm.ProgramadoPara,
+			"roles_destino":       comm.RolesDestino,
+			"icono":               comm.Icono,
+			"permite_comentarios": comm.PermiteComentarios,
+			"publicado":           comm.Publicado,
+			"leido":               comm.Leido,
+			"num_comentarios":     comm.NumComentarios,
+			"created_at":          comm.CreatedAt,
+		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -132,70 +91,114 @@ func (h *CommunicationHandler) ListCommunications(c *gin.Context) {
 	})
 }
 
-// UpdateCommunication actualiza un comunicado
-func (h *CommunicationHandler) UpdateCommunication(c *gin.Context) {
+// GetCommunication obtiene un comunicado por ID
+func (h *CommunicationHandler) GetCommunication(c *gin.Context) {
+	communicationID := c.Param("id")
+	condominioID, exists := c.Get("condominio_id")
+	if !exists {
+		Unauthorized(c, "unauthorized")
+		return
+	}
+
+	communication, err := h.service.GetByID(c.Request.Context(), communicationID, condominioID.(string))
+	if err != nil {
+		NotFound(c, "not found")
+		return
+	}
+
+	c.JSON(http.StatusOK, communication)
+}
+
+// MarkRead marca un comunicado como leído
+// PUT /api/v1/communications/:id/read
+func (h *CommunicationHandler) MarkRead(c *gin.Context) {
+	communicationID := c.Param("id")
+	userID, exists := c.Get("user_id")
+	if !exists {
+		Unauthorized(c, "unauthorized")
+		return
+	}
+
+	if err := h.service.MarkRead(c.Request.Context(), communicationID, userID.(string)); err != nil {
+		InternalServerError(c, "error marking as read")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// UnreadCount retorna la cantidad de comunicados sin leer
+// GET /api/v1/communications/unread-count
+func (h *CommunicationHandler) UnreadCount(c *gin.Context) {
+	condominioID, exists := c.Get("condominio_id")
+	if !exists {
+		Unauthorized(c, "unauthorized")
+		return
+	}
+	userID, exists := c.Get("user_id")
+	if !exists {
+		Unauthorized(c, "unauthorized")
+		return
+	}
+	userRole, _ := c.Get("role")
+
+	count, err := h.service.UnreadCount(c.Request.Context(), condominioID.(string), userID.(string), userRole.(string))
+	if err != nil {
+		InternalServerError(c, "error getting unread count")
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.UnreadCountResponse{Count: count})
+}
+
+// ListComments obtiene los comentarios de un comunicado
+// GET /api/v1/communications/:id/comments
+func (h *CommunicationHandler) ListComments(c *gin.Context) {
 	communicationID := c.Param("id")
 
-	var request dto.UpdateCommunicationRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
+	comments, err := h.service.ListComments(c.Request.Context(), communicationID)
+	if err != nil {
+		InternalServerError(c, "error fetching comments")
+		return
+	}
+
+	responses := make([]dto.CommentResponse, 0, len(comments))
+	for _, com := range comments {
+		responses = append(responses, dto.CommentResponse{
+			ID:            com.ID,
+			IDComunicado:  com.IDComunicado,
+			IDUsuario:     com.IDUsuario,
+			Contenido:     com.Contenido,
+			AutorNombre:   com.AutorNombre,
+			AutorApellido: com.AutorApellido,
+			FechaCreacion: com.FechaCreacion,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": responses})
+}
+
+// CreateComment crea un comentario en un comunicado
+// POST /api/v1/communications/:id/comments
+func (h *CommunicationHandler) CreateComment(c *gin.Context) {
+	communicationID := c.Param("id")
+	userID, exists := c.Get("user_id")
+	if !exists {
+		Unauthorized(c, "unauthorized")
+		return
+	}
+
+	var req dto.CreateCommentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		BadRequest(c, "invalid request")
 		return
 	}
 
-	// Obtener condominioID del contexto JWT
-	condominioID, exists := c.Get("condominio_id")
-	if !exists {
-		Unauthorized(c, "unauthorized")
-		return
-	}
-
-	communication, err := h.service.Update(c.Request.Context(), request, communicationID, condominioID.(string))
+	comment, err := h.service.CreateComment(c.Request.Context(), communicationID, userID.(string), req.Contenido)
 	if err != nil {
-		if errors.Is(err, errors.New("communication not found")) {
-			NotFound(c, "not found")
-		} else {
-			BadRequest(c, err.Error())
-		}
+		InternalServerError(c, "error creating comment")
 		return
 	}
 
-	c.JSON(http.StatusOK, toCommunicationResponse(communication))
-}
-
-// DeleteCommunication elimina un comunicado
-func (h *CommunicationHandler) DeleteCommunication(c *gin.Context) {
-	communicationID := c.Param("id")
-
-	// Obtener condominioID del contexto JWT
-	condominioID, exists := c.Get("condominio_id")
-	if !exists {
-		Unauthorized(c, "unauthorized")
-		return
-	}
-
-	err := h.service.Delete(c.Request.Context(), communicationID, condominioID.(string))
-	if err != nil {
-		if errors.Is(err, errors.New("communication not found")) {
-			NotFound(c, "not found")
-		} else {
-			InternalServerError(c, "internal server error")
-		}
-		return
-	}
-
-	c.Status(http.StatusNoContent)
-}
-
-// toCommunicationResponse convierte un modelo a respuesta
-func toCommunicationResponse(c *models.Communication) dto.CommunicationResponse {
-	return dto.CommunicationResponse{
-		ID:           c.ID,
-		Titulo:       c.Titulo,
-		Contenido:    c.Contenido,
-		Fecha:        c.Fecha,
-		Autor:        c.Autor,
-		CondominioID: c.CondominioID,
-		CreatedAt:    c.CreatedAt,
-		UpdatedAt:    c.UpdatedAt,
-	}
+	c.JSON(http.StatusCreated, comment)
 }

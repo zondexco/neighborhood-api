@@ -108,15 +108,19 @@ func (r *Router) SetupRoutes(
 			spaces.DELETE("/:id", spaceHandler.Delete)
 		}
 
-		// Communication routes
+		// Communication routes (any authenticated user)
 		communications := protected.Group("/communications")
 		{
-			communications.POST("", communicationHandler.CreateCommunication)
 			communications.GET("", communicationHandler.ListCommunications)
+			communications.GET("/unread-count", communicationHandler.UnreadCount)
 			communications.GET("/:id", communicationHandler.GetCommunication)
-			communications.PUT("/:id", communicationHandler.UpdateCommunication)
-			communications.DELETE("/:id", communicationHandler.DeleteCommunication)
+			communications.PUT("/:id/read", communicationHandler.MarkRead)
+			communications.GET("/:id/comments", communicationHandler.ListComments)
+			communications.POST("/:id/comments", communicationHandler.CreateComment)
 		}
+
+		// Condominio info (any authenticated user can read)
+		protected.GET("/condominio", adminHandler.GetCondominio)
 
 		// Package routes
 		packages := protected.Group("/packages")
@@ -141,6 +145,7 @@ func (r *Router) SetupRoutes(
 		admin.Use(middleware.RequireRoles("administrador", "admin"))
 		{
 			admin.GET("/condominio", adminHandler.GetCondominio)
+			admin.PUT("/condominio", adminHandler.UpdateCondominio)
 			admin.GET("/stats", adminHandler.GetStats)
 			admin.GET("/users", adminHandler.ListUsers)
 			admin.GET("/users/:id", adminHandler.GetUserByID)
@@ -152,7 +157,10 @@ func (r *Router) SetupRoutes(
 			admin.POST("/apartments", adminHandler.CreateApartment)
 			admin.PUT("/apartments/:id", adminHandler.UpdateApartment)
 			admin.DELETE("/apartments/:id", adminHandler.DeleteApartment)
+			admin.GET("/communications", adminHandler.ListCommunicationsAdmin)
 			admin.POST("/communications", adminHandler.CreateCommunication)
+			admin.PUT("/communications/:id", adminHandler.UpdateCommunication)
+			admin.DELETE("/communications/:id", adminHandler.DeleteCommunication)
 		}
 	}
 }

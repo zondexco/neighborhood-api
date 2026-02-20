@@ -204,14 +204,21 @@ type ReservationsListResponse struct {
 
 // CommunicationDTO estructura de comunicado
 type CommunicationDTO struct {
-	ID           string    `json:"id"`
-	Titulo       string    `json:"titulo"`
-	Contenido    string    `json:"contenido"`
-	Fecha        time.Time `json:"fecha"`
-	Autor        string    `json:"autor"`
-	CondominioID string    `json:"condominio_id"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID                 string    `json:"id"`
+	Titulo             string    `json:"titulo"`
+	Contenido          string    `json:"contenido"`
+	Fecha              time.Time `json:"fecha"`
+	Autor              string    `json:"autor"`
+	CondominioID       string    `json:"condominio_id"`
+	ProgramadoPara     *time.Time `json:"programado_para,omitempty"`
+	RolesDestino       []string  `json:"roles_destino,omitempty"`
+	Icono              string    `json:"icono"`
+	PermiteComentarios bool      `json:"permite_comentarios"`
+	Publicado          bool      `json:"publicado"`
+	Leido              bool      `json:"leido"`
+	NumComentarios     int       `json:"num_comentarios"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 // CommunicationsListResponse respuesta con lista de comunicados
@@ -279,28 +286,77 @@ type InvoicesListResponse struct {
 
 // CreateCommunicationRequest estructura para crear un comunicado
 type CreateCommunicationRequest struct {
-	Titulo    string     `json:"titulo" binding:"required"`
-	Contenido string     `json:"contenido" binding:"required"`
-	Fecha     *time.Time `json:"fecha,omitempty"`
+	Titulo             string     `json:"titulo" binding:"required"`
+	Contenido          string     `json:"contenido" binding:"required"`
+	Fecha              *time.Time `json:"fecha,omitempty"`
+	ProgramadoPara     *time.Time `json:"programado_para,omitempty"`
+	RolesDestino       []string   `json:"roles_destino,omitempty"`
+	Icono              string     `json:"icono"`
+	PermiteComentarios bool       `json:"permite_comentarios"`
+	Publicado          *bool      `json:"publicado,omitempty"`
 }
 
 // UpdateCommunicationRequest estructura para actualizar un comunicado
 type UpdateCommunicationRequest struct {
-	Titulo    *string    `json:"titulo,omitempty"`
-	Contenido *string    `json:"contenido,omitempty"`
-	Fecha     *time.Time `json:"fecha,omitempty"`
+	Titulo             *string    `json:"titulo,omitempty"`
+	Contenido          *string    `json:"contenido,omitempty"`
+	Fecha              *time.Time `json:"fecha,omitempty"`
+	ProgramadoPara     *time.Time `json:"programado_para,omitempty"`
+	RolesDestino       []string   `json:"roles_destino,omitempty"`
+	Icono              *string    `json:"icono,omitempty"`
+	PermiteComentarios *bool      `json:"permite_comentarios,omitempty"`
+	Publicado          *bool      `json:"publicado,omitempty"`
 }
 
 // CommunicationResponse estructura de respuesta de comunicado
 type CommunicationResponse struct {
-	ID           string    `json:"id"`
-	Titulo       string    `json:"titulo"`
-	Contenido    string    `json:"contenido"`
-	Fecha        time.Time `json:"fecha"`
-	Autor        string    `json:"autor"`
-	CondominioID string    `json:"condominio_id"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID                 string     `json:"id"`
+	Titulo             string     `json:"titulo"`
+	Contenido          string     `json:"contenido"`
+	Fecha              time.Time  `json:"fecha"`
+	Autor              string     `json:"autor"`
+	CondominioID       string     `json:"condominio_id"`
+	ProgramadoPara     *time.Time `json:"programado_para,omitempty"`
+	RolesDestino       []string   `json:"roles_destino,omitempty"`
+	Icono              string     `json:"icono"`
+	PermiteComentarios bool       `json:"permite_comentarios"`
+	Publicado          bool       `json:"publicado"`
+	Leido              bool       `json:"leido"`
+	NumComentarios     int        `json:"num_comentarios"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
+}
+
+// CommentResponse estructura de respuesta de comentario
+type CommentResponse struct {
+	ID            string    `json:"id"`
+	IDComunicado  string    `json:"id_comunicado"`
+	IDUsuario     string    `json:"id_usuario"`
+	Contenido     string    `json:"contenido"`
+	AutorNombre   string    `json:"autor_nombre"`
+	AutorApellido string    `json:"autor_apellido"`
+	FechaCreacion time.Time `json:"fecha_creacion"`
+}
+
+// CreateCommentRequest estructura para crear un comentario
+type CreateCommentRequest struct {
+	Contenido string `json:"contenido" binding:"required"`
+}
+
+// UnreadCountResponse conteo de comunicados sin leer
+type UnreadCountResponse struct {
+	Count int `json:"count"`
+}
+
+// UpdateCondominioRequest estructura para actualizar info del condominio
+type UpdateCondominioRequest struct {
+	Nombre             *string `json:"nombre,omitempty"`
+	Direccion          *string `json:"direccion,omitempty"`
+	Ciudad             *string `json:"ciudad,omitempty"`
+	Telefono           *string `json:"telefono,omitempty"`
+	Email              *string `json:"email,omitempty"`
+	NIT                *string `json:"nit,omitempty"`
+	RepresentanteLegal *string `json:"representante_legal,omitempty"`
 }
 
 // ========== Package DTOs ==========

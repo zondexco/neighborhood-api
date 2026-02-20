@@ -130,8 +130,11 @@ type CommunicationRepository interface {
 	// FindByID busca un comunicado por ID (multi-tenant)
 	FindByID(ctx context.Context, communicationID, condominioID string) (*models.Communication, error)
 
-	// GetByCondominio obtiene todos los comunicados de un condominio
+	// GetByCondominio obtiene todos los comunicados de un condominio (admin, sin filtro)
 	GetByCondominio(ctx context.Context, condominioID string, page, pageSize int) ([]*models.Communication, int, error)
+
+	// ListVisible obtiene comunicados visibles para un usuario según rol y fecha
+	ListVisible(ctx context.Context, condominioID, userID, userRole string, page, pageSize int) ([]*models.Communication, int, error)
 
 	// Create crea un nuevo comunicado
 	Create(ctx context.Context, communication *models.Communication) error
@@ -141,6 +144,18 @@ type CommunicationRepository interface {
 
 	// Delete elimina un comunicado (multi-tenant)
 	Delete(ctx context.Context, communicationID, condominioID string) error
+
+	// MarkRead marca un comunicado como leído por un usuario
+	MarkRead(ctx context.Context, communicationID, userID string) error
+
+	// UnreadCount retorna la cantidad de comunicados sin leer para un usuario
+	UnreadCount(ctx context.Context, condominioID, userID, userRole string) (int, error)
+
+	// ListComments obtiene los comentarios de un comunicado
+	ListComments(ctx context.Context, communicationID string) ([]*models.ComunicadoComentario, error)
+
+	// CreateComment crea un comentario en un comunicado
+	CreateComment(ctx context.Context, comment *models.ComunicadoComentario) error
 }
 
 // PackageRepository interfaz para operaciones con paquetes
@@ -162,4 +177,7 @@ type CondominioRepository interface {
 
 	// GetAll obtiene todos los condominios
 	GetAll(ctx context.Context) ([]*models.Condominio, error)
+
+	// Update actualiza la información de un condominio
+	Update(ctx context.Context, condominio *models.Condominio) error
 }

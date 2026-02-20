@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -402,10 +403,9 @@ func generatePIN() (string, error) {
 	return fmt.Sprintf("%06d", num%1000000), nil
 }
 
-// CreateCommunication crea un nuevo comunicado
+// CreateCommunication crea un nuevo comunicado con campos extendidos
 // POST /api/v1/admin/communications
 func (h *AdminHandler) CreateCommunication(c *gin.Context) {
-	// Extraer condominio del JWT
 	condominioID, exists := c.Get("condominio_id")
 	if !exists {
 		h.logger.Warn("missing condominio_id in context")
@@ -421,8 +421,13 @@ func (h *AdminHandler) CreateCommunication(c *gin.Context) {
 	}
 
 	var req struct {
-		Titulo    string `json:"titulo" binding:"required"`
-		Contenido string `json:"contenido" binding:"required"`
+		Titulo             string   `json:"titulo" binding:"required"`
+		Contenido          string   `json:"contenido" binding:"required"`
+		ProgramadoPara     *string  `json:"programado_para"`
+		RolesDestino       []string `json:"roles_destino"`
+		Icono              string   `json:"icono"`
+		PermiteComentarios bool     `json:"permite_comentarios"`
+		Publicado          *bool    `json:"publicado"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -431,11 +436,37 @@ func (h *AdminHandler) CreateCommunication(c *gin.Context) {
 		return
 	}
 
+	icono := req.Icono
+	if icono == "" {
+		icono = "megaphone"
+	}
+
+	publicado := true
+	if req.Publicado != nil {
+		publicado = *req.Publicado
+	}
+
 	communication := &models.Communication{
-		Titulo:       req.Titulo,
-		Contenido:    req.Contenido,
-		Autor:        userID.(string),
-		CondominioID: condominioID.(string),
+		Titulo:             req.Titulo,
+		Contenido:          req.Contenido,
+		Autor:              userID.(string),
+		CondominioID:       condominioID.(string),
+		Icono:              icono,
+		PermiteComentarios: req.PermiteComentarios,
+		Publicado:          publicado,
+	}
+
+	if len(req.RolesDestino) > 0 {
+		communication.RolesDestino = req.RolesDestino
+	}
+
+	if req.ProgramadoPara != nil && *req.ProgramadoPara != "" {
+		t, err := time.Parse(time.RFC3339, *req.ProgramadoPara)
+		if err != nil {
+			BadRequest(c, "invalid programado_para format, use RFC3339")
+			return
+		}
+		communication.ProgramadoPara = &t
 	}
 
 	if err := h.communicationRepository.Create(c.Request.Context(), communication); err != nil {
@@ -445,4 +476,222 @@ func (h *AdminHandler) CreateCommunication(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, communication)
+}
+
+// UpdateCommunication actualiza un comunicado existente
+// PUT /api/v1/admin/communications/:id
+func (h *AdminHandler) UpdateCommunication(c *gin.Context) {
+	condominioID, exists := c.Get("condominio_id")
+	if !exists {
+		Unauthorized(c, "unauthorized")
+		return
+	}
+
+	commID := c.Param("id")
+	if commID == "" {
+		BadRequest(c, "invalid request")
+		return
+	}
+
+	existing, err := h.communicationRepository.FindByID(c.Request.Context(), commID, condominioID.(string))
+	if err != nil {
+		h.logger.WithError(err).WithField("communication_id", commID).Warn("communication not found")
+		NotFound(c, "communication not found")
+		return
+	}
+
+	var req struct {
+		Titulo             *string  `json:"titulo"`
+		Contenido          *string  `json:"contenido"`
+		ProgramadoPara     *string  `json:"programado_para"`
+		RolesDestino       []string `json:"roles_destino"`
+		Icono              *string  `json:"icono"`
+		PermiteComentarios *bool    `json:"permite_comentarios"`
+		Publicado          *bool    `json:"publicado"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	if req.Titulo != nil {
+		existing.Titulo = *req.Titulo
+	}
+	if req.Contenido != nil {
+		existing.Contenido = *req.Contenido
+	}
+	if req.Icono != nil {
+		existing.Icono = *req.Icono
+	}
+	if req.PermiteComentarios != nil {
+		existing.PermiteComentarios = *req.PermiteComentarios
+	}
+	if req.Publicado != nil {
+		existing.Publicado = *req.Publicado
+	}
+	if req.RolesDestino != nil {
+		existing.RolesDestino = req.RolesDestino
+	}
+	if req.ProgramadoPara != nil {
+		if *req.ProgramadoPara == "" {
+			existing.ProgramadoPara = nil
+		} else {
+			t, err := time.Parse(time.RFC3339, *req.ProgramadoPara)
+			if err != nil {
+				BadRequest(c, "invalid programado_para format")
+				return
+			}
+			existing.ProgramadoPara = &t
+		}
+	}
+
+	if err := h.communicationRepository.Update(c.Request.Context(), existing); err != nil {
+		h.logger.WithError(err).Error("error updating communication")
+		InternalServerError(c, "error updating communication")
+		return
+	}
+
+	c.JSON(http.StatusOK, existing)
+}
+
+// DeleteCommunication elimina un comunicado
+// DELETE /api/v1/admin/communications/:id
+func (h *AdminHandler) DeleteCommunication(c *gin.Context) {
+	condominioID, exists := c.Get("condominio_id")
+	if !exists {
+		Unauthorized(c, "unauthorized")
+		return
+	}
+
+	commID := c.Param("id")
+	if commID == "" {
+		BadRequest(c, "invalid request")
+		return
+	}
+
+	if err := h.communicationRepository.Delete(c.Request.Context(), commID, condominioID.(string)); err != nil {
+		h.logger.WithError(err).Error("error deleting communication")
+		InternalServerError(c, "error deleting communication")
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// ListCommunicationsAdmin lista TODOS los comunicados del condominio (sin filtro de visibilidad)
+// GET /api/v1/admin/communications
+func (h *AdminHandler) ListCommunicationsAdmin(c *gin.Context) {
+	condominioID, exists := c.Get("condominio_id")
+	if !exists {
+		Unauthorized(c, "unauthorized")
+		return
+	}
+
+	page := 1
+	pageSize := 50
+	if p := c.Query("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+	if ps := c.Query("pageSize"); ps != "" {
+		if parsed, err := strconv.Atoi(ps); err == nil && parsed > 0 && parsed <= 200 {
+			pageSize = parsed
+		}
+	}
+
+	communications, total, err := h.communicationRepository.GetByCondominio(c.Request.Context(), condominioID.(string), page, pageSize)
+	if err != nil {
+		h.logger.WithError(err).Error("error fetching communications")
+		InternalServerError(c, "error fetching communications")
+		return
+	}
+
+	formatted := make([]gin.H, 0, len(communications))
+	for _, comm := range communications {
+		formatted = append(formatted, gin.H{
+			"id":                  comm.ID,
+			"titulo":              comm.Titulo,
+			"contenido":           comm.Contenido,
+			"fecha":               comm.Fecha,
+			"autor":               comm.Autor,
+			"condominio_id":       comm.CondominioID,
+			"programado_para":     comm.ProgramadoPara,
+			"roles_destino":       comm.RolesDestino,
+			"icono":               comm.Icono,
+			"permite_comentarios": comm.PermiteComentarios,
+			"publicado":           comm.Publicado,
+			"created_at":          comm.CreatedAt,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":       formatted,
+		"page":       page,
+		"pageSize":   pageSize,
+		"total":      total,
+		"totalPages": (total + pageSize - 1) / pageSize,
+	})
+}
+
+// UpdateCondominio actualiza la información del condominio
+// PUT /api/v1/admin/condominio
+func (h *AdminHandler) UpdateCondominio(c *gin.Context) {
+	condominioID, exists := c.Get("condominio_id")
+	if !exists {
+		Unauthorized(c, "unauthorized")
+		return
+	}
+
+	condominio, err := h.condominioRepository.FindByID(c.Request.Context(), condominioID.(string))
+	if err != nil || condominio == nil {
+		NotFound(c, "condominio not found")
+		return
+	}
+
+	var req struct {
+		Nombre             *string `json:"nombre"`
+		Direccion          *string `json:"direccion"`
+		Ciudad             *string `json:"ciudad"`
+		Telefono           *string `json:"telefono"`
+		Email              *string `json:"email"`
+		NIT                *string `json:"nit"`
+		RepresentanteLegal *string `json:"representante_legal"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	if req.Nombre != nil {
+		condominio.Nombre = *req.Nombre
+	}
+	if req.Direccion != nil {
+		condominio.Direccion = *req.Direccion
+	}
+	if req.Ciudad != nil {
+		condominio.Ciudad = *req.Ciudad
+	}
+	if req.Telefono != nil {
+		condominio.Telefono = req.Telefono
+	}
+	if req.Email != nil {
+		condominio.Email = req.Email
+	}
+	if req.NIT != nil {
+		condominio.NIT = req.NIT
+	}
+	if req.RepresentanteLegal != nil {
+		condominio.RepresentanteLegal = req.RepresentanteLegal
+	}
+
+	if err := h.condominioRepository.Update(c.Request.Context(), condominio); err != nil {
+		h.logger.WithError(err).Error("error updating condominio")
+		InternalServerError(c, "error updating condominio")
+		return
+	}
+
+	c.JSON(http.StatusOK, condominio)
 }

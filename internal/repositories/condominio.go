@@ -103,3 +103,44 @@ func (r *CondominioRepositoryImpl) GetAll(ctx context.Context) ([]*models.Condom
 
 	return condominios, nil
 }
+
+// Update actualiza la información de un condominio
+func (r *CondominioRepositoryImpl) Update(ctx context.Context, condominio *models.Condominio) error {
+	query := `
+		UPDATE condominio SET
+			nombre = $1,
+			direccion = $2,
+			ciudad = $3,
+			telefono = $4,
+			email = $5,
+			nit = $6,
+			representante_legal = $7
+		WHERE id_condominio = $8
+	`
+
+	result, err := r.db.ExecContext(ctx, query,
+		condominio.Nombre,
+		condominio.Direccion,
+		condominio.Ciudad,
+		condominio.Telefono,
+		condominio.Email,
+		condominio.NIT,
+		condominio.RepresentanteLegal,
+		condominio.ID,
+	)
+	if err != nil {
+		r.log.WithError(err).WithField("condominio_id", condominio.ID).Error("error updating condominio")
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
