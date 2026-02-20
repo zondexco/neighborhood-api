@@ -48,6 +48,37 @@ args := m.Called(ctx, communicationID, condominioID)
 return args.Error(0)
 }
 
+func (m *MockCommunicationRepository) ListVisible(ctx context.Context, condominioID, userID, userRole string, page, pageSize int) ([]*models.Communication, int, error) {
+args := m.Called(ctx, condominioID, userID, userRole, page, pageSize)
+if args.Get(0) == nil {
+return nil, args.Int(1), args.Error(2)
+}
+return args.Get(0).([]*models.Communication), args.Int(1), args.Error(2)
+}
+
+func (m *MockCommunicationRepository) MarkRead(ctx context.Context, communicationID, userID string) error {
+args := m.Called(ctx, communicationID, userID)
+return args.Error(0)
+}
+
+func (m *MockCommunicationRepository) UnreadCount(ctx context.Context, condominioID, userID, userRole string) (int, error) {
+args := m.Called(ctx, condominioID, userID, userRole)
+return args.Int(0), args.Error(1)
+}
+
+func (m *MockCommunicationRepository) ListComments(ctx context.Context, communicationID string) ([]*models.ComunicadoComentario, error) {
+args := m.Called(ctx, communicationID)
+if args.Get(0) == nil {
+return nil, args.Error(1)
+}
+return args.Get(0).([]*models.ComunicadoComentario), args.Error(1)
+}
+
+func (m *MockCommunicationRepository) CreateComment(ctx context.Context, comment *models.ComunicadoComentario) error {
+args := m.Called(ctx, comment)
+return args.Error(0)
+}
+
 // Tests
 func TestCommunicationService_Create_Success(t *testing.T) {
 mockRepo := new(MockCommunicationRepository)
@@ -226,4 +257,94 @@ err := service.Delete(context.Background(), "comm-999", "cond-001")
 
 assert.Error(t, err)
 mockRepo.AssertExpectations(t)
+}
+
+func TestCommunicationService_ListVisible_Success(t *testing.T) {
+mockRepo := new(MockCommunicationRepository)
+service := NewCommunicationService(mockRepo)
+
+comms := []*models.Communication{
+{ID: "comm-001", Titulo: "Visible 1", Publicado: true},
+{ID: "comm-002", Titulo: "Visible 2", Publicado: true},
+}
+
+mockRepo.On("ListVisible", mock.Anything, "cond-001", "user-001", "residente", 1, 10).Return(comms, 2, nil)
+
+result, total, err := service.ListVisible(context.Background(), "cond-001", "user-001", "residente", 1, 10)
+
+assert.NoError(t, err)
+assert.Len(t, result, 2)
+assert.Equal(t, 2, total)
+mockRepo.AssertExpectations(t)
+}
+
+func TestCommunicationService_MarkRead_Success(t *testing.T) {
+mockRepo := new(MockCommunicationRepository)
+service := NewCommunicationService(mockRepo)
+
+mockRepo.On("MarkRead", mock.Anything, "comm-001", "user-001").Return(nil)
+
+err := service.MarkRead(context.Background(), "comm-001", "user-001")
+
+assert.NoError(t, err)
+mockRepo.AssertExpectations(t)
+}
+
+func TestCommunicationService_UnreadCount_Success(t *testing.T) {
+mockRepo := new(MockCommunicationRepository)
+service := NewCommunicationService(mockRepo)
+
+mockRepo.On("UnreadCount", mock.Anything, "cond-001", "user-001", "residente").Return(5, nil)
+
+count, err := service.UnreadCount(context.Background(), "cond-001", "user-001", "residente")
+
+assert.NoError(t, err)
+assert.Equal(t, 5, count)
+mockRepo.AssertExpectations(t)
+}
+
+func TestCommunicationService_ListComments_Success(t *testing.T) {
+mockRepo := new(MockCommunicationRepository)
+service := NewCommunicationService(mockRepo)
+
+comments := []*models.ComunicadoComentario{
+{ID: "comment-001", Contenido: "Buen comunicado"},
+{ID: "comment-002", Contenido: "Gracias por informar"},
+}
+
+mockRepo.On("ListComments", mock.Anything, "comm-001").Return(comments, nil)
+
+result, err := service.ListComments(context.Background(), "comm-001")
+
+assert.NoError(t, err)
+assert.Len(t, result, 2)
+mockRepo.AssertExpectations(t)
+}
+
+func TestCommunicationService_CreateComment_Success(t *testing.T) {
+mockRepo := new(MockCommunicationRepository)
+service := NewCommunicationService(mockRepo)
+
+mockRepo.On("CreateComment", mock.Anything, mock.MatchedBy(func(c *models.ComunicadoComentario) bool {
+return c.IDComunicado == "comm-001" && c.IDUsuario == "user-001" && c.Contenido == "Buen aviso"
+})).Return(nil)
+
+result, err := service.CreateComment(context.Background(), "comm-001", "user-001", "Buen aviso")
+
+assert.NoError(t, err)
+assert.NotNil(t, result)
+assert.Equal(t, "Buen aviso", result.Contenido)
+mockRepo.AssertExpectations(t)
+}
+
+func TestCommunicationService_CreateComment_EmptyContent(t *testing.T) {
+mockRepo := new(MockCommunicationRepository)
+service := NewCommunicationService(mockRepo)
+
+result, err := service.CreateComment(context.Background(), "comm-001", "user-001", "")
+
+assert.Error(t, err)
+assert.Nil(t, result)
+assert.Equal(t, "contenido is required", err.Error())
+mockRepo.AssertNotCalled(t, "CreateComment")
 }

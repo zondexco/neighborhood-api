@@ -107,6 +107,11 @@ func (m *MockCondominioRepository) GetAll(ctx context.Context) ([]*models.Condom
 	return condominios, nil
 }
 
+func (m *MockCondominioRepository) Update(ctx context.Context, condominio *models.Condominio) error {
+	m.condominios[condominio.ID] = condominio
+	return nil
+}
+
 // TestAuthServiceLogin test login exitoso
 func TestAuthServiceLogin(t *testing.T) {
 	// Setup
