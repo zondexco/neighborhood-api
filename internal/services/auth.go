@@ -130,7 +130,8 @@ func (s *AuthServiceImpl) Login(ctx context.Context, req *dto.LoginRequest, cond
 	s.log.WithField("user_id", user.ID).WithField("email", user.Email).WithField("condominio_name", condominioName).WithField("has_condominio", condominioName != "").Info("User logged in successfully")
 
 	isAdmin := strings.EqualFold(user.Rol, "administrador") ||
-		strings.EqualFold(user.Rol, "admin")
+		strings.EqualFold(user.Rol, "admin") ||
+		strings.EqualFold(user.Rol, "dev")
 
 	return &dto.LoginResponse{
 		Token:          token,
@@ -212,7 +213,8 @@ func (s *AuthServiceImpl) RefreshToken(ctx context.Context, refreshToken string)
 	s.log.WithField("user_id", user.ID).Info("Token refreshed successfully")
 
 	isAdmin := strings.EqualFold(user.Rol, "administrador") ||
-		strings.EqualFold(user.Rol, "admin")
+		strings.EqualFold(user.Rol, "admin") ||
+		strings.EqualFold(user.Rol, "dev")
 
 	return &dto.LoginResponse{
 		Token:          token,

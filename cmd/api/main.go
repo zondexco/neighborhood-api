@@ -178,10 +178,11 @@ func main() {
 	spaceHandler := handlers.NewSpaceHandler(spaceService)
 	adminHandler := handlers.NewAdminHandler(userRepo, apartmentRepo, communicationRepo, condominioRepo, log)
 	dashboardHandler := handlers.NewDashboardHandler(userRepo, packageService, reservationService, communicationService)
+	devHandler := handlers.NewDevHandler(condominioRepo, userRepo, jwtManager)
 
 	// Configurar rutas
 	router := handlers.NewRouter(engine, healthVersion)
-	router.SetupRoutes(authHandler, apartmentHandler, invoiceHandler, reservationHandler, communicationHandler, packageHandler, spaceHandler, adminHandler, dashboardHandler)
+	router.SetupRoutes(authHandler, apartmentHandler, invoiceHandler, reservationHandler, communicationHandler, packageHandler, spaceHandler, adminHandler, dashboardHandler, devHandler)
 
 	log.WithField("port", cfg.Server.Port).Info("Starting HTTP server")
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)

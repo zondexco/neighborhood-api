@@ -30,7 +30,8 @@ func (r *Router) SetupRoutes(
 	packageHandler *PackageHandler,
 	spaceHandler *SpaceHandler,
 	adminHandler *AdminHandler,
-	dashboardHandler *DashboardHandler, // Nuevo handler inyectado
+	dashboardHandler *DashboardHandler,
+	devHandler *DevHandler,
 ) {
 	// API v1
 	v1 := r.engine.Group("/api/v1")
@@ -142,7 +143,7 @@ func (r *Router) SetupRoutes(
 
 		// Admin routes
 		admin := protected.Group("/admin")
-		admin.Use(middleware.RequireRoles("administrador", "admin"))
+		admin.Use(middleware.RequireRoles("administrador", "admin", "dev"))
 		{
 			admin.GET("/condominio", adminHandler.GetCondominio)
 			admin.PUT("/condominio", adminHandler.UpdateCondominio)
@@ -161,6 +162,18 @@ func (r *Router) SetupRoutes(
 			admin.POST("/communications", adminHandler.CreateCommunication)
 			admin.PUT("/communications/:id", adminHandler.UpdateCommunication)
 			admin.DELETE("/communications/:id", adminHandler.DeleteCommunication)
+		}
+
+		// Dev routes (dev role only)
+		dev := protected.Group("/dev")
+		dev.Use(middleware.RequireRoles("dev"))
+		{
+			dev.GET("/condominios", devHandler.ListCondominios)
+			dev.POST("/condominios", devHandler.CreateCondominio)
+			dev.PUT("/condominios/:id", devHandler.UpdateCondominio)
+			dev.DELETE("/condominios/:id", devHandler.DeleteCondominio)
+			dev.GET("/condominios/:id/admins", devHandler.ListAdminsByCondominio)
+			dev.POST("/impersonate", devHandler.Impersonate)
 		}
 	}
 }

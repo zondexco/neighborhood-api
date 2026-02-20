@@ -200,5 +200,13 @@ func (h *CommunicationHandler) CreateComment(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, comment)
+	c.JSON(http.StatusCreated, dto.CommentResponse{
+		ID:            comment.ID,
+		IDComunicado:  comment.IDComunicado,
+		IDUsuario:     comment.IDUsuario,
+		Contenido:     comment.Contenido,
+		AutorNombre:   comment.AutorNombre,
+		AutorApellido: comment.AutorApellido,
+		FechaCreacion: comment.FechaCreacion,
+	})
 }

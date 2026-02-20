@@ -332,9 +332,14 @@ func (r *CommunicationRepositoryImpl) ListComments(ctx context.Context, communic
 // CreateComment crea un comentario en un comunicado
 func (r *CommunicationRepositoryImpl) CreateComment(ctx context.Context, comment *models.ComunicadoComentario) error {
 	query := `
-		INSERT INTO comunicado_comentario (id_comunicado, id_usuario, contenido)
-		VALUES ($1, $2, $3)
-		RETURNING id_comentario, fecha_creacion
+		WITH inserted AS (
+			INSERT INTO comunicado_comentario (id_comunicado, id_usuario, contenido)
+			VALUES ($1, $2, $3)
+			RETURNING id_comentario, fecha_creacion, id_usuario
+		)
+		SELECT i.id_comentario, i.fecha_creacion, u.nombres, u.apellidos
+		FROM inserted i
+		JOIN usuario u ON u.id_usuario = i.id_usuario
 	`
 	return r.db.QueryRowContext(
 		ctx,
@@ -342,5 +347,5 @@ func (r *CommunicationRepositoryImpl) CreateComment(ctx context.Context, comment
 		comment.IDComunicado,
 		comment.IDUsuario,
 		comment.Contenido,
-	).Scan(&comment.ID, &comment.FechaCreacion)
+	).Scan(&comment.ID, &comment.FechaCreacion, &comment.AutorNombre, &comment.AutorApellido)
 }

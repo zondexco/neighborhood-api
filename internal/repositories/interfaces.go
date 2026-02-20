@@ -180,4 +180,10 @@ type CondominioRepository interface {
 
 	// Update actualiza la información de un condominio
 	Update(ctx context.Context, condominio *models.Condominio) error
+
+	// Create crea un nuevo condominio
+	Create(ctx context.Context, condominio *models.Condominio) error
+
+	// Delete elimina un condominio
+	Delete(ctx context.Context, condominioID string) error
 }

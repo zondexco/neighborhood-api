@@ -52,6 +52,13 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 	rol := normalizeRole(req.Rol)
 	estado := normalizeEstadoGeneral(req.Estado)
 
+	// Admins cannot create other admins or devs
+	callerRole, _ := c.Get("role")
+	if callerRole != "dev" && (rol == "administrador" || rol == "dev") {
+		Forbidden(c, "no tienes permisos para crear usuarios con este rol")
+		return
+	}
+
 	pinPlain, err := generatePIN()
 	if err != nil {
 		h.logger.WithError(err).Error("failed generating pin for user")
@@ -130,6 +137,22 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 
+	// Admins cannot modify admins or devs (only devs can)
+	callerRole, _ := c.Get("role")
+	if callerRole != "dev" && (user.Rol == "administrador" || user.Rol == "dev") {
+		Forbidden(c, "no tienes permisos para modificar este usuario")
+		return
+	}
+
+	// Admins cannot promote to admin or dev
+	if req.Rol != nil {
+		newRole := normalizeRole(*req.Rol)
+		if callerRole != "dev" && (newRole == "administrador" || newRole == "dev") {
+			Forbidden(c, "no tienes permisos para asignar este rol")
+			return
+		}
+	}
+
 	if req.Nombres != nil {
 		user.Nombre = *req.Nombres
 	}
@@ -171,6 +194,25 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	userID := c.Param("id")
 	if userID == "" {
 		BadRequest(c, "invalid request")
+		return
+	}
+
+	// Cannot delete yourself
+	callerID, _ := c.Get("user_id")
+	if callerID == userID {
+		Forbidden(c, "no puedes eliminarte a ti mismo")
+		return
+	}
+
+	// Admins cannot delete admins or devs
+	callerRole, _ := c.Get("role")
+	targetUser, findErr := h.userRepository.FindByID(c.Request.Context(), userID)
+	if findErr != nil {
+		NotFound(c, "user not found")
+		return
+	}
+	if callerRole != "dev" && (targetUser.Rol == "administrador" || targetUser.Rol == "dev") {
+		Forbidden(c, "no tienes permisos para eliminar este usuario")
 		return
 	}
 
@@ -658,6 +700,7 @@ func (h *AdminHandler) UpdateCondominio(c *gin.Context) {
 		Email              *string `json:"email"`
 		NIT                *string `json:"nit"`
 		RepresentanteLegal *string `json:"representante_legal"`
+		PermiteSoporte     *bool   `json:"permite_soporte"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -685,6 +728,9 @@ func (h *AdminHandler) UpdateCondominio(c *gin.Context) {
 	}
 	if req.RepresentanteLegal != nil {
 		condominio.RepresentanteLegal = req.RepresentanteLegal
+	}
+	if req.PermiteSoporte != nil {
+		condominio.PermiteSoporte = *req.PermiteSoporte
 	}
 
 	if err := h.condominioRepository.Update(c.Request.Context(), condominio); err != nil {

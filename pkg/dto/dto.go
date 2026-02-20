@@ -357,6 +357,25 @@ type UpdateCondominioRequest struct {
 	Email              *string `json:"email,omitempty"`
 	NIT                *string `json:"nit,omitempty"`
 	RepresentanteLegal *string `json:"representante_legal,omitempty"`
+	PermiteSoporte     *bool   `json:"permite_soporte,omitempty"`
+}
+
+// ========== Dev DTOs ==========
+
+// CreateCondominioRequest estructura para crear un condominio (dev only)
+type CreateCondominioRequest struct {
+	Nombre             string  `json:"nombre" binding:"required"`
+	Direccion          string  `json:"direccion" binding:"required"`
+	Ciudad             string  `json:"ciudad" binding:"required"`
+	Telefono           *string `json:"telefono,omitempty"`
+	Email              *string `json:"email,omitempty"`
+	NIT                *string `json:"nit,omitempty"`
+	RepresentanteLegal *string `json:"representante_legal,omitempty"`
+}
+
+// ImpersonateRequest estructura para impersonar un condominio (dev only)
+type ImpersonateRequest struct {
+	CondominioID string `json:"condominio_id" binding:"required"`
 }
 
 // ========== Package DTOs ==========

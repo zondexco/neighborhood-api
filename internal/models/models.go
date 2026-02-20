@@ -162,4 +162,5 @@ type Condominio struct {
 	RepresentanteLegal *string   `db:"representante_legal" json:"representante_legal"`
 	FechaCreacion      time.Time `db:"fecha_creacion" json:"fecha_creacion"`
 	Estado             string    `db:"estado" json:"estado"`
+	PermiteSoporte     bool      `db:"permite_soporte" json:"permite_soporte"`
 }
