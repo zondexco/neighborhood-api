@@ -112,6 +112,17 @@ func (m *MockCondominioRepository) Update(ctx context.Context, condominio *model
 	return nil
 }
 
+func (m *MockCondominioRepository) Create(ctx context.Context, condominio *models.Condominio) error {
+	condominio.ID = "cond-new"
+	m.condominios[condominio.ID] = condominio
+	return nil
+}
+
+func (m *MockCondominioRepository) Delete(ctx context.Context, condominioID string) error {
+	delete(m.condominios, condominioID)
+	return nil
+}
+
 // TestAuthServiceLogin test login exitoso
 func TestAuthServiceLogin(t *testing.T) {
 	// Setup
