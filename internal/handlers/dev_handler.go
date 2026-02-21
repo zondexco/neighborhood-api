@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -203,6 +205,188 @@ func (h *DevHandler) ListAdminsByCondominio(c *gin.Context) {
 		"data":  admins,
 		"total": len(admins),
 	})
+}
+
+// CreateAdminForCondominio crea un administrador en un condominio específico
+// POST /api/v1/dev/condominios/:id/admins
+func (h *DevHandler) CreateAdminForCondominio(c *gin.Context) {
+	condominioID := c.Param("id")
+	if condominioID == "" {
+		BadRequest(c, "invalid request")
+		return
+	}
+
+	// Verify condominio exists
+	condo, err := h.condominioRepo.FindByID(c.Request.Context(), condominioID)
+	if err != nil || condo == nil {
+		NotFound(c, "condominio not found")
+		return
+	}
+
+	var req struct {
+		Nombres   string  `json:"nombres" binding:"required"`
+		Apellidos string  `json:"apellidos" binding:"required"`
+		Email     string  `json:"email" binding:"required"`
+		Telefono  *string `json:"telefono"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	// Generate a random 6-digit PIN
+	pinPlain, err := devGeneratePIN()
+	if err != nil {
+		h.logger.WithError(err).Error("failed generating pin")
+		InternalServerError(c, "failed generating PIN")
+		return
+	}
+
+	pinHash, err := utils.HashPIN(pinPlain)
+	if err != nil {
+		h.logger.WithError(err).Error("failed hashing pin")
+		InternalServerError(c, "failed generating PIN")
+		return
+	}
+
+	telefono := ""
+	if req.Telefono != nil {
+		telefono = *req.Telefono
+	}
+
+	user := &models.User{
+		Nombre:       req.Nombres,
+		Apellido:     req.Apellidos,
+		Email:        req.Email,
+		Telefono:     telefono,
+		CondominioID: condominioID,
+		PIN:          pinHash,
+		Rol:          "administrador",
+		Estado:       "activo",
+		TipoDoc:      "",
+		NumeroDoc:    "",
+	}
+
+	if err := h.userRepo.Create(c.Request.Context(), user); err != nil {
+		h.logger.WithError(err).Error("error creating admin for condominio")
+		if strings.Contains(strings.ToLower(err.Error()), "duplicate") {
+			Conflict(c, "ya existe un usuario con ese email")
+			return
+		}
+		InternalServerError(c, "error creating admin")
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"user":         user,
+		"pin_temporal": pinPlain,
+	})
+}
+
+// UpdateAdminInCondominio actualiza un administrador de un condominio
+// PUT /api/v1/dev/condominios/:id/admins/:userId
+func (h *DevHandler) UpdateAdminInCondominio(c *gin.Context) {
+	condominioID := c.Param("id")
+	userID := c.Param("userId")
+	if condominioID == "" || userID == "" {
+		BadRequest(c, "invalid request")
+		return
+	}
+
+	user, err := h.userRepo.FindByID(c.Request.Context(), userID)
+	if err != nil {
+		NotFound(c, "user not found")
+		return
+	}
+
+	// Ensure user belongs to this condominio
+	if user.CondominioID != condominioID {
+		Forbidden(c, "el usuario no pertenece a este condominio")
+		return
+	}
+
+	var req struct {
+		Nombres   *string `json:"nombres"`
+		Apellidos *string `json:"apellidos"`
+		Email     *string `json:"email"`
+		Telefono  *string `json:"telefono"`
+		Estado    *string `json:"estado"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	if req.Nombres != nil {
+		user.Nombre = *req.Nombres
+	}
+	if req.Apellidos != nil {
+		user.Apellido = *req.Apellidos
+	}
+	if req.Email != nil {
+		user.Email = *req.Email
+	}
+	if req.Telefono != nil {
+		user.Telefono = *req.Telefono
+	}
+	if req.Estado != nil {
+		estado := strings.TrimSpace(strings.ToLower(*req.Estado))
+		switch estado {
+		case "activo", "inactivo", "suspendido":
+			user.Estado = estado
+		default:
+			user.Estado = "activo"
+		}
+	}
+
+	if err := h.userRepo.Update(c.Request.Context(), user); err != nil {
+		h.logger.WithError(err).Error("error updating admin")
+		InternalServerError(c, "error updating admin")
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
+}
+
+// DeleteAdminFromCondominio elimina un administrador de un condominio
+// DELETE /api/v1/dev/condominios/:id/admins/:userId
+func (h *DevHandler) DeleteAdminFromCondominio(c *gin.Context) {
+	condominioID := c.Param("id")
+	userID := c.Param("userId")
+	if condominioID == "" || userID == "" {
+		BadRequest(c, "invalid request")
+		return
+	}
+
+	user, err := h.userRepo.FindByID(c.Request.Context(), userID)
+	if err != nil {
+		NotFound(c, "user not found")
+		return
+	}
+
+	if user.CondominioID != condominioID {
+		Forbidden(c, "el usuario no pertenece a este condominio")
+		return
+	}
+
+	if err := h.userRepo.Delete(c.Request.Context(), userID); err != nil {
+		h.logger.WithError(err).Error("error deleting admin")
+		InternalServerError(c, "error deleting admin")
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+func devGeneratePIN() (string, error) {
+	var b [4]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", err
+	}
+	num := uint32(b[0])<<24 | uint32(b[1])<<16 | uint32(b[2])<<8 | uint32(b[3])
+	return fmt.Sprintf("%06d", num%1000000), nil
 }
 
 // Impersonate genera un token para impersonar un condominio (dev only)

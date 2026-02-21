@@ -173,6 +173,9 @@ func (r *Router) SetupRoutes(
 			dev.PUT("/condominios/:id", devHandler.UpdateCondominio)
 			dev.DELETE("/condominios/:id", devHandler.DeleteCondominio)
 			dev.GET("/condominios/:id/admins", devHandler.ListAdminsByCondominio)
+			dev.POST("/condominios/:id/admins", devHandler.CreateAdminForCondominio)
+			dev.PUT("/condominios/:id/admins/:userId", devHandler.UpdateAdminInCondominio)
+			dev.DELETE("/condominios/:id/admins/:userId", devHandler.DeleteAdminFromCondominio)
 			dev.POST("/impersonate", devHandler.Impersonate)
 		}
 	}
