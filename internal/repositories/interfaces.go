@@ -106,6 +106,9 @@ type ReservationRepository interface {
 	// GetByEspacio obtiene reservas de un espacio común
 	GetByEspacio(ctx context.Context, espacioID, condominioID string, page, pageSize int) ([]*models.Reservation, int, error)
 
+	// GetByApartment obtiene reservas de todos los miembros de un apartamento
+	GetByApartment(ctx context.Context, apartmentID, condominioID string, page, pageSize int) ([]*models.Reservation, int, error)
+
 	// ExistsOverlap valida solapamiento de reservas activas para un espacio
 	ExistsOverlap(ctx context.Context, espacioID, condominioID string, start, end time.Time) (bool, error)
 

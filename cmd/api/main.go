@@ -172,7 +172,7 @@ func main() {
 
 	// Inicializar handlers
 	authHandler := handlers.NewAuthHandler(authService)
-	apartmentHandler := handlers.NewApartmentHandler(apartmentService, log)
+	apartmentHandler := handlers.NewApartmentHandler(apartmentService, userRepo, log)
 	invoiceHandler := handlers.NewInvoiceHandler(invoiceService, log)
 	reservationHandler := handlers.NewReservationHandler(reservationService, notificationService, log)
 	communicationHandler := handlers.NewCommunicationHandler(communicationService)

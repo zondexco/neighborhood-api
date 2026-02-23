@@ -251,6 +251,61 @@ func (r *ReservationRepositoryImpl) GetByUsuario(ctx context.Context, usuarioID,
 	return reservations, total, nil
 }
 
+// GetByApartment obtiene reservas de todos los usuarios de un apartamento
+func (r *ReservationRepositoryImpl) GetByApartment(ctx context.Context, apartmentID, condominioID string, page, pageSize int) ([]*models.Reservation, int, error) {
+	countQuery := `SELECT COUNT(*) FROM reserva WHERE id_apartamento = $1 AND id_condominio = $2`
+	var total int
+	if err := r.db.QueryRowContext(ctx, countQuery, apartmentID, condominioID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * pageSize
+	query := `
+		SELECT id_reserva, id_condominio, id_usuario, id_apartamento, id_espacio,
+		       fecha_solicitud, fecha_inicio, fecha_fin, personas_esperadas, observaciones,
+		       valor_base, costo_total, pagado, estado
+		FROM reserva
+		WHERE id_apartamento = $1 AND id_condominio = $2
+		ORDER BY fecha_inicio DESC
+		LIMIT $3 OFFSET $4
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, apartmentID, condominioID, pageSize, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var reservations []*models.Reservation
+	for rows.Next() {
+		var reservation models.Reservation
+		if err := rows.Scan(
+			&reservation.ID,
+			&reservation.CondominioID,
+			&reservation.UsuarioID,
+			&reservation.ApartmentID,
+			&reservation.EspacioID,
+			&reservation.FechaSolicitud,
+			&reservation.FechaInicio,
+			&reservation.FechaFin,
+			&reservation.PersonasEsperadas,
+			&reservation.Observaciones,
+			&reservation.ValorBase,
+			&reservation.CostoTotal,
+			&reservation.Pagado,
+			&reservation.Estado,
+		); err != nil {
+			return nil, 0, err
+		}
+		reservations = append(reservations, &reservation)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	return reservations, total, nil
+}
+
 // Update actualiza una reserva
 func (r *ReservationRepositoryImpl) Update(ctx context.Context, reservation *models.Reservation) error {
 	query := `

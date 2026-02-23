@@ -66,6 +66,8 @@ func (r *Router) SetupRoutes(
 			// Invoices por apartamento - DENTRO del grupo
 			apartments.GET("/:id/invoices", invoiceHandler.ListByApartment)
 			apartments.GET("/:id/packages", packageHandler.ListByApartment)
+			apartments.GET("/:id/reservations", reservationHandler.ListByApartment)
+			apartments.GET("/:id/members", apartmentHandler.ListMembers)
 		}
 
 		// Invoice routes

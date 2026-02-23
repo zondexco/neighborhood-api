@@ -120,6 +120,14 @@ func (m *MockReservationRepository) GetByEspacio(ctx context.Context, espacioID,
 	return args.Get(0).([]*models.Reservation), args.Int(1), args.Error(2)
 }
 
+func (m *MockReservationRepository) GetByApartment(ctx context.Context, apartmentID, condominioID string, page, pageSize int) ([]*models.Reservation, int, error) {
+	args := m.Called(ctx, apartmentID, condominioID, page, pageSize)
+	if args.Get(0) == nil {
+		return nil, args.Int(1), args.Error(2)
+	}
+	return args.Get(0).([]*models.Reservation), args.Int(1), args.Error(2)
+}
+
 func (m *MockReservationRepository) ExistsOverlap(ctx context.Context, espacioID, condominioID string, start, end time.Time) (bool, error) {
 	args := m.Called(ctx, espacioID, condominioID, start, end)
 	return args.Bool(0), args.Error(1)
