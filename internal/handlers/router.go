@@ -32,6 +32,7 @@ func (r *Router) SetupRoutes(
 	adminHandler *AdminHandler,
 	dashboardHandler *DashboardHandler,
 	devHandler *DevHandler,
+	notificationHandler *NotificationHandler,
 ) {
 	// API v1
 	v1 := r.engine.Group("/api/v1")
@@ -133,6 +134,16 @@ func (r *Router) SetupRoutes(
 			packages.DELETE("/:id", packageHandler.Delete)
 			packages.PUT("/:id/deliver", packageHandler.MarkDelivered)
 			packages.POST("/:id/notify", packageHandler.Notify)
+		}
+
+		// Notification routes (any authenticated user)
+		notifications := protected.Group("/notifications")
+		{
+			notifications.GET("", notificationHandler.List)
+			notifications.GET("/unread-count", notificationHandler.UnreadCount)
+			notifications.PUT("/read-all", notificationHandler.MarkAllRead)
+			notifications.PUT("/:id/read", notificationHandler.MarkRead)
+			notifications.DELETE("/:id", notificationHandler.Delete)
 		}
 
 		// Dashboard routes (for authenticated residents)

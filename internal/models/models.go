@@ -148,6 +148,19 @@ type Package struct {
 	ApartmentFloor  *string    `db:"piso" json:"apartment_floor"`
 }
 
+// Notification representa una notificación in-app personal para un usuario
+type Notification struct {
+	ID            string    `db:"id" json:"id"`
+	UserID        string    `db:"id_usuario" json:"user_id"`
+	CondominioID  string    `db:"id_condominio" json:"condominio_id"`
+	Tipo          string    `db:"tipo" json:"tipo"` // "paquete" | "reserva"
+	Titulo        string    `db:"titulo" json:"titulo"`
+	Mensaje       string    `db:"mensaje" json:"mensaje"`
+	Leido         bool      `db:"leido" json:"leido"`
+	ReferenciaID  *string   `db:"referencia_id" json:"referencia_id"`
+	FechaCreacion time.Time `db:"fecha_creacion" json:"fecha_creacion"`
+}
+
 // Condominio representa un condominio
 // Condominio representa un condominio en el sistema
 type Condominio struct {

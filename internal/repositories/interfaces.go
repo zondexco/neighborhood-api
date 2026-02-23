@@ -33,6 +33,9 @@ type UserRepository interface {
 
 	// GetByCondominio obtiene todos los usuarios de un condominio
 	GetByCondominio(ctx context.Context, condominioID string, page, pageSize int) ([]*models.User, int, error)
+
+	// GetByApartment obtiene todos los usuarios asignados a un apartamento
+	GetByApartment(ctx context.Context, apartmentID string) ([]*models.User, error)
 }
 
 // ApartmentRepository interfaz para operaciones con apartamentos
@@ -168,6 +171,16 @@ type PackageRepository interface {
 	Update(ctx context.Context, packageID, condominioID string, fields map[string]interface{}) (*models.Package, error)
 	Delete(ctx context.Context, packageID, condominioID string) error
 	MarkDelivered(ctx context.Context, packageID, condominioID string) error
+}
+
+// NotificationRepository interfaz para notificaciones in-app
+type NotificationRepository interface {
+	Create(ctx context.Context, notif *models.Notification) error
+	ListByUser(ctx context.Context, userID, condominioID string, page, pageSize int) ([]*models.Notification, int, error)
+	MarkRead(ctx context.Context, notifID, userID string) error
+	MarkAllRead(ctx context.Context, userID, condominioID string) error
+	UnreadCount(ctx context.Context, userID, condominioID string) (int, error)
+	Delete(ctx context.Context, notifID, userID string) error
 }
 
 // CondominioRepository interfaz para operaciones con condominios

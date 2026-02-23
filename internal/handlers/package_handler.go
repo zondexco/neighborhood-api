@@ -15,11 +15,12 @@ import (
 
 // PackageHandler maneja endpoints de paquetería
 type PackageHandler struct {
-	service services.PackageService
+	service      services.PackageService
+	notifService services.NotificationService
 }
 
-func NewPackageHandler(service services.PackageService) *PackageHandler {
-	return &PackageHandler{service: service}
+func NewPackageHandler(service services.PackageService, notifService services.NotificationService) *PackageHandler {
+	return &PackageHandler{service: service, notifService: notifService}
 }
 
 // POST /api/v1/packages — empleado + admin
@@ -47,6 +48,16 @@ func (h *PackageHandler) Create(c *gin.Context) {
 		BadRequest(c, err.Error())
 		return
 	}
+
+	// Notificar a los residentes del apartamento (best-effort)
+	go h.notifService.NotifyPackage(
+		c.Request.Context(),
+		condominioID,
+		req.ApartmentID,
+		pkg.ID,
+		req.Carrier,
+		buildApartmentLabel(pkg),
+	)
 
 	c.JSON(http.StatusCreated, toPackageResponse(pkg))
 }

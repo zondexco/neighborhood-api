@@ -81,6 +81,16 @@ func (m *MockUserRepository) GetByCondominio(ctx context.Context, condominioID s
 	return users, len(users), nil
 }
 
+func (m *MockUserRepository) GetByApartment(ctx context.Context, apartmentID string) ([]*models.User, error) {
+	var users []*models.User
+	for _, user := range m.users {
+		if user.ApartmentID != nil && *user.ApartmentID == apartmentID {
+			users = append(users, user)
+		}
+	}
+	return users, nil
+}
+
 // MockCondominioRepository mock de CondominioRepository para tests
 type MockCondominioRepository struct {
 	condominios map[string]*models.Condominio
