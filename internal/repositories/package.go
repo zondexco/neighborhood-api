@@ -106,7 +106,7 @@ func (r *PackageRepositoryImpl) ListWithFilters(ctx context.Context, condominioI
 		conditions = append(conditions, "p.fecha_entregado IS NOT NULL")
 	}
 	if f.Carrier != "" {
-		conditions = append(conditions, fmt.Sprintf("p.transportadora = $%d", idx))
+		conditions = append(conditions, fmt.Sprintf("p.transportadora ILIKE $%d", idx))
 		args = append(args, f.Carrier)
 		idx++
 	}
