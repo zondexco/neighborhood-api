@@ -32,7 +32,7 @@ INSERT INTO usuario (
     estado,
     fecha_creacion
 ) VALUES (
-    'dev@enux.dev',
+    'dev@cris.ac',
     'Desarrollador',
     'SuperAdmin',
     '3001234567',
