@@ -2,6 +2,8 @@ package models
 
 import (
 	"time"
+
+	"github.com/lib/pq"
 )
 
 // User representa un usuario en el sistema
@@ -90,14 +92,42 @@ type Space struct {
 
 // Communication representa un comunicado
 type Communication struct {
-	ID           string    `db:"id_comunicado" json:"id"`
-	Titulo       string    `db:"titulo" json:"titulo"`
-	Contenido    string    `db:"contenido" json:"contenido"`
-	Fecha        time.Time `db:"fecha_publicacion" json:"fecha"`
-	Autor        string    `db:"id_usuario_emisor" json:"autor"`
-	CondominioID string    `db:"id_condominio" json:"condominio_id"`
-	CreatedAt    time.Time `db:"fecha_publicacion" json:"created_at"`
-	UpdatedAt    time.Time `db:"fecha_publicacion" json:"updated_at"`
+	ID                 string         `db:"id_comunicado" json:"id"`
+	Titulo             string         `db:"titulo" json:"titulo"`
+	Contenido          string         `db:"contenido" json:"contenido"`
+	Fecha              time.Time      `db:"fecha_publicacion" json:"fecha"`
+	Autor              string         `db:"id_usuario_emisor" json:"autor"`
+	CondominioID       string         `db:"id_condominio" json:"condominio_id"`
+	ProgramadoPara     *time.Time     `db:"programado_para" json:"programado_para,omitempty"`
+	RolesDestino       pq.StringArray `db:"roles_destino" json:"roles_destino,omitempty"`
+	Icono              string         `db:"icono" json:"icono"`
+	PermiteComentarios bool           `db:"permite_comentarios" json:"permite_comentarios"`
+	Publicado          bool           `db:"publicado" json:"publicado"`
+	CreatedAt          time.Time      `db:"fecha_publicacion" json:"created_at"`
+	UpdatedAt          time.Time      `db:"fecha_publicacion" json:"updated_at"`
+	// Computed fields (not in DB directly)
+	Leido         bool `db:"-" json:"leido"`
+	NumComentarios int  `db:"-" json:"num_comentarios"`
+}
+
+// ComunicadoLectura representa el tracking de lectura de un comunicado
+type ComunicadoLectura struct {
+	ID            string    `db:"id" json:"id"`
+	IDComunicado  string    `db:"id_comunicado" json:"id_comunicado"`
+	IDUsuario     string    `db:"id_usuario" json:"id_usuario"`
+	LeidoEn       time.Time `db:"leido_en" json:"leido_en"`
+}
+
+// ComunicadoComentario representa un comentario en un comunicado
+type ComunicadoComentario struct {
+	ID             string    `db:"id_comentario" json:"id"`
+	IDComunicado   string    `db:"id_comunicado" json:"id_comunicado"`
+	IDUsuario      string    `db:"id_usuario" json:"id_usuario"`
+	Contenido      string    `db:"contenido" json:"contenido"`
+	FechaCreacion  time.Time `db:"fecha_creacion" json:"fecha_creacion"`
+	// Joined fields
+	AutorNombre   string `db:"-" json:"autor_nombre,omitempty"`
+	AutorApellido string `db:"-" json:"autor_apellido,omitempty"`
 }
 
 // Package representa un paquete/encomienda recibido
@@ -118,6 +148,19 @@ type Package struct {
 	ApartmentFloor  *string    `db:"piso" json:"apartment_floor"`
 }
 
+// Notification representa una notificación in-app personal para un usuario
+type Notification struct {
+	ID            string    `db:"id" json:"id"`
+	UserID        string    `db:"id_usuario" json:"user_id"`
+	CondominioID  string    `db:"id_condominio" json:"condominio_id"`
+	Tipo          string    `db:"tipo" json:"tipo"` // "paquete" | "reserva"
+	Titulo        string    `db:"titulo" json:"titulo"`
+	Mensaje       string    `db:"mensaje" json:"mensaje"`
+	Leido         bool      `db:"leido" json:"leido"`
+	ReferenciaID  *string   `db:"referencia_id" json:"referencia_id"`
+	FechaCreacion time.Time `db:"fecha_creacion" json:"fecha_creacion"`
+}
+
 // Condominio representa un condominio
 // Condominio representa un condominio en el sistema
 type Condominio struct {
@@ -132,4 +175,5 @@ type Condominio struct {
 	RepresentanteLegal *string   `db:"representante_legal" json:"representante_legal"`
 	FechaCreacion      time.Time `db:"fecha_creacion" json:"fecha_creacion"`
 	Estado             string    `db:"estado" json:"estado"`
+	PermiteSoporte     bool      `db:"permite_soporte" json:"permite_soporte"`
 }

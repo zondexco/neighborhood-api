@@ -13,15 +13,17 @@ import (
 
 // ReservationHandler maneja las rutas de reservas
 type ReservationHandler struct {
-	service services.ReservationService
-	logger  logger.Logger
+	service      services.ReservationService
+	notifService services.NotificationService
+	logger       logger.Logger
 }
 
 // NewReservationHandler crea un nuevo manejador de reservas
-func NewReservationHandler(service services.ReservationService, log logger.Logger) *ReservationHandler {
+func NewReservationHandler(service services.ReservationService, notifService services.NotificationService, log logger.Logger) *ReservationHandler {
 	return &ReservationHandler{
-		service: service,
-		logger:  log,
+		service:      service,
+		notifService: notifService,
+		logger:       log,
 	}
 }
 
@@ -237,6 +239,50 @@ func (h *ReservationHandler) ListByEspacio(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// ListByApartment obtiene reservas de todos los miembros de un apartamento
+// GET /api/v1/apartments/:id/reservations
+func (h *ReservationHandler) ListByApartment(c *gin.Context) {
+	condominioID, exists := c.Get("condominio_id")
+	if !exists {
+		Unauthorized(c, "unauthorized")
+		return
+	}
+
+	apartmentID := c.Param("id")
+	if apartmentID == "" {
+		BadRequest(c, "invalid request")
+		return
+	}
+
+	page := 1
+	pageSize := 50
+
+	if p := c.Query("page"); p != "" {
+		if val, err := strconv.Atoi(p); err == nil && val > 0 {
+			page = val
+		}
+	}
+	if ps := c.Query("page_size"); ps != "" {
+		if val, err := strconv.Atoi(ps); err == nil && val > 0 && val <= 100 {
+			pageSize = val
+		}
+	}
+
+	reservations, total, err := h.service.ListByApartment(c.Request.Context(), apartmentID, condominioID.(string), page, pageSize)
+	if err != nil {
+		h.logger.WithError(err).WithField("apartment_id", apartmentID).Error("error listing reservations by apartment")
+		InternalServerError(c, "internal server error")
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.ReservationsListResponse{
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+		Data:     reservations,
+	})
+}
+
 // Update actualiza una reserva
 // PUT /api/v1/reservations/:id
 func (h *ReservationHandler) Update(c *gin.Context) {
@@ -268,6 +314,19 @@ func (h *ReservationHandler) Update(c *gin.Context) {
 		h.logger.WithError(err).WithField("reservation_id", id).Error("error updating reservation")
 		InternalServerError(c, "internal server error")
 		return
+	}
+
+	// Notificar al dueño si cambió el estado (best-effort, en goroutine)
+	if req.Estado != nil && *req.Estado != "" {
+		condID := condominioID.(string)
+		newEstado := *req.Estado
+		resID := reservation.ID
+		userID := reservation.UsuarioID
+		espacioID := reservation.EspacioID
+		go func() {
+			espacioNombre, _ := h.service.GetEspacioNombre(c.Request.Context(), espacioID, condID)
+			_ = h.notifService.NotifyReservationStatus(c.Request.Context(), condID, userID, resID, espacioNombre, newEstado)
+		}()
 	}
 
 	c.JSON(http.StatusOK, reservation)

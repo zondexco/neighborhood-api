@@ -93,8 +93,14 @@ func (s *AuthServiceImpl) Login(ctx context.Context, req *dto.LoginRequest, cond
 		return nil, errors.UserNotActiveErrorf("user account is not active")
 	}
 
+	// Resolver apartment_id (solo residentes lo tienen)
+	apartmentID := ""
+	if user.ApartmentID != nil {
+		apartmentID = *user.ApartmentID
+	}
+
 	// Generar tokens
-	token, err := s.jwtManager.GenerateToken(user.ID, user.Email, user.CondominioID, user.Rol)
+	token, err := s.jwtManager.GenerateToken(user.ID, user.Email, user.CondominioID, user.Rol, apartmentID)
 	if err != nil {
 		return nil, err
 	}
@@ -124,18 +130,22 @@ func (s *AuthServiceImpl) Login(ctx context.Context, req *dto.LoginRequest, cond
 	s.log.WithField("user_id", user.ID).WithField("email", user.Email).WithField("condominio_name", condominioName).WithField("has_condominio", condominioName != "").Info("User logged in successfully")
 
 	isAdmin := strings.EqualFold(user.Rol, "administrador") ||
-		strings.EqualFold(user.Rol, "admin")
+		strings.EqualFold(user.Rol, "admin") ||
+		strings.EqualFold(user.Rol, "dev")
 
 	return &dto.LoginResponse{
 		Token:          token,
 		RefreshToken:   refreshToken,
 		UserID:         user.ID,
 		Email:          user.Email,
+		Nombre:         user.Nombre,
+		Apellido:       user.Apellido,
 		CondominioID:   user.CondominioID,
 		CondominioName: condominioName,
 		Role:           user.Rol,
 		IsAdmin:        isAdmin,
-		Permissions:    []string{}, // TODO: Cargar permisos específicos del rol
+		ApartmentID:    apartmentID,
+		Permissions:    []string{},
 		ExpiresAt:      expiresAt,
 	}, nil
 }
@@ -173,8 +183,14 @@ func (s *AuthServiceImpl) RefreshToken(ctx context.Context, refreshToken string)
 		return nil, errors.UnauthorizedErrorf("user not found")
 	}
 
+	// Resolver apartment_id
+	refreshApartmentID := ""
+	if user.ApartmentID != nil {
+		refreshApartmentID = *user.ApartmentID
+	}
+
 	// Generar nuevo par de tokens
-	token, err := s.jwtManager.GenerateToken(user.ID, user.Email, user.CondominioID, user.Rol)
+	token, err := s.jwtManager.GenerateToken(user.ID, user.Email, user.CondominioID, user.Rol, refreshApartmentID)
 	if err != nil {
 		return nil, err
 	}
@@ -197,18 +213,22 @@ func (s *AuthServiceImpl) RefreshToken(ctx context.Context, refreshToken string)
 	s.log.WithField("user_id", user.ID).Info("Token refreshed successfully")
 
 	isAdmin := strings.EqualFold(user.Rol, "administrador") ||
-		strings.EqualFold(user.Rol, "admin")
+		strings.EqualFold(user.Rol, "admin") ||
+		strings.EqualFold(user.Rol, "dev")
 
 	return &dto.LoginResponse{
 		Token:          token,
 		RefreshToken:   newRefreshToken,
 		UserID:         user.ID,
 		Email:          user.Email,
+		Nombre:         user.Nombre,
+		Apellido:       user.Apellido,
 		CondominioID:   user.CondominioID,
 		CondominioName: condominioName,
 		Role:           user.Rol,
 		IsAdmin:        isAdmin,
-		Permissions:    []string{}, // TODO: Cargar permisos específicos del rol
+		ApartmentID:    refreshApartmentID,
+		Permissions:    []string{},
 		ExpiresAt:      expiresAt,
 	}, nil
 }

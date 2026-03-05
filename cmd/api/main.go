@@ -23,6 +23,12 @@ import (
 	"github.com/google/uuid"
 )
 
+var (
+	Version   = "dev"
+	BuildTime = "unknown"
+	GitCommit = "unknown"
+)
+
 type responseStatusWriter struct {
 	gin.ResponseWriter
 	status int
@@ -65,8 +71,16 @@ func main() {
 	})
 	log := logger.Get()
 
+	healthVersion := Version
+	if healthVersion == "" || healthVersion == "dev" {
+		healthVersion = cfg.App.Version
+	}
+
 	log.WithField("app_name", cfg.App.Name).
 		WithField("version", cfg.App.Version).
+		WithField("build_version", Version).
+		WithField("build_time", BuildTime).
+		WithField("git_commit", GitCommit).
 		WithField("environment", cfg.Server.Environment).
 		Info("Starting application")
 
@@ -91,6 +105,7 @@ func main() {
 	packageRepo := repositories.NewPackageRepository(db)
 	condominioRepo := repositories.NewCondominioRepository(db)
 	spaceRepo := repositories.NewSpaceRepository(db)
+	notificationRepo := repositories.NewNotificationRepository(db)
 
 	// Inicializar JWT manager
 	jwtManager := utils.NewJWTManager(cfg.JWT)
@@ -103,6 +118,7 @@ func main() {
 	communicationService := services.NewCommunicationService(communicationRepo)
 	packageService := services.NewPackageService(packageRepo)
 	spaceService := services.NewSpaceService(spaceRepo)
+	notificationService := services.NewNotificationService(notificationRepo, userRepo)
 
 	// Configurar Gin
 	if cfg.Server.Environment == "production" {
@@ -156,18 +172,20 @@ func main() {
 
 	// Inicializar handlers
 	authHandler := handlers.NewAuthHandler(authService)
-	apartmentHandler := handlers.NewApartmentHandler(apartmentService, log)
+	apartmentHandler := handlers.NewApartmentHandler(apartmentService, userRepo, log)
 	invoiceHandler := handlers.NewInvoiceHandler(invoiceService, log)
-	reservationHandler := handlers.NewReservationHandler(reservationService, log)
+	reservationHandler := handlers.NewReservationHandler(reservationService, notificationService, log)
 	communicationHandler := handlers.NewCommunicationHandler(communicationService)
-	packageHandler := handlers.NewPackageHandler(packageService)
+	packageHandler := handlers.NewPackageHandler(packageService, notificationService)
 	spaceHandler := handlers.NewSpaceHandler(spaceService)
 	adminHandler := handlers.NewAdminHandler(userRepo, apartmentRepo, communicationRepo, condominioRepo, log)
-	dashboardHandler := handlers.NewDashboardHandler()
+	dashboardHandler := handlers.NewDashboardHandler(userRepo, packageService, reservationService, communicationService)
+	devHandler := handlers.NewDevHandler(condominioRepo, userRepo, jwtManager)
+	notificationHandler := handlers.NewNotificationHandler(notificationService)
 
 	// Configurar rutas
-	router := handlers.NewRouter(engine)
-	router.SetupRoutes(authHandler, apartmentHandler, invoiceHandler, reservationHandler, communicationHandler, packageHandler, spaceHandler, adminHandler, dashboardHandler)
+	router := handlers.NewRouter(engine, healthVersion)
+	router.SetupRoutes(authHandler, apartmentHandler, invoiceHandler, reservationHandler, communicationHandler, packageHandler, spaceHandler, adminHandler, dashboardHandler, devHandler, notificationHandler)
 
 	log.WithField("port", cfg.Server.Port).Info("Starting HTTP server")
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)

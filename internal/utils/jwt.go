@@ -18,6 +18,7 @@ type TokenClaims struct {
 	Email        string `json:"email"`
 	CondominioID string `json:"condominio_id"`
 	Role         string `json:"role"`
+	ApartmentID  string `json:"apartment_id"` // "" si el usuario no tiene apartamento
 	jwt.RegisteredClaims
 }
 
@@ -47,7 +48,7 @@ func NewJWTManager(cfg types.JWTConfig) *JWTManager {
 }
 
 // GenerateToken genera un token JWT
-func (jm *JWTManager) GenerateToken(userID, email, condominioID, role string) (string, error) {
+func (jm *JWTManager) GenerateToken(userID, email, condominioID, role, apartmentID string) (string, error) {
 	expiresAt := time.Now().Add(time.Duration(jm.config.Expiration) * time.Second)
 
 	claims := TokenClaims{
@@ -55,6 +56,7 @@ func (jm *JWTManager) GenerateToken(userID, email, condominioID, role string) (s
 		Email:        email,
 		CondominioID: condominioID,
 		Role:         role,
+		ApartmentID:  apartmentID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -151,7 +153,7 @@ func (jm *JWTManager) GetExpiration() int {
 }
 
 // RefreshTokenPair genera un nuevo par de tokens a partir de un refresh token válido
-func (jm *JWTManager) RefreshTokenPair(refreshToken, userID, email, condominioID, role string) (*TokenResponse, error) {
+func (jm *JWTManager) RefreshTokenPair(refreshToken, userID, email, condominioID, role, apartmentID string) (*TokenResponse, error) {
 	// Validar refresh token
 	subject, err := jm.ValidateRefreshToken(refreshToken)
 	if err != nil {
@@ -165,7 +167,7 @@ func (jm *JWTManager) RefreshTokenPair(refreshToken, userID, email, condominioID
 	}
 
 	// Generar nuevo token
-	newToken, err := jm.GenerateToken(userID, email, condominioID, role)
+	newToken, err := jm.GenerateToken(userID, email, condominioID, role, apartmentID)
 	if err != nil {
 		return nil, err
 	}

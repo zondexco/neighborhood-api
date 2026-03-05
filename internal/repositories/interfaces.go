@@ -2,8 +2,10 @@ package repositories
 
 import (
 	"context"
-	"neighborhood-api/internal/models"
 	"time"
+
+	"neighborhood-api/internal/models"
+	"neighborhood-api/pkg/dto"
 )
 
 // UserRepository interfaz para operaciones con usuarios
@@ -31,6 +33,9 @@ type UserRepository interface {
 
 	// GetByCondominio obtiene todos los usuarios de un condominio
 	GetByCondominio(ctx context.Context, condominioID string, page, pageSize int) ([]*models.User, int, error)
+
+	// GetByApartment obtiene todos los usuarios asignados a un apartamento
+	GetByApartment(ctx context.Context, apartmentID string) ([]*models.User, error)
 }
 
 // ApartmentRepository interfaz para operaciones con apartamentos
@@ -101,6 +106,9 @@ type ReservationRepository interface {
 	// GetByEspacio obtiene reservas de un espacio común
 	GetByEspacio(ctx context.Context, espacioID, condominioID string, page, pageSize int) ([]*models.Reservation, int, error)
 
+	// GetByApartment obtiene reservas de todos los miembros de un apartamento
+	GetByApartment(ctx context.Context, apartmentID, condominioID string, page, pageSize int) ([]*models.Reservation, int, error)
+
 	// ExistsOverlap valida solapamiento de reservas activas para un espacio
 	ExistsOverlap(ctx context.Context, espacioID, condominioID string, start, end time.Time) (bool, error)
 
@@ -128,8 +136,11 @@ type CommunicationRepository interface {
 	// FindByID busca un comunicado por ID (multi-tenant)
 	FindByID(ctx context.Context, communicationID, condominioID string) (*models.Communication, error)
 
-	// GetByCondominio obtiene todos los comunicados de un condominio
+	// GetByCondominio obtiene todos los comunicados de un condominio (admin, sin filtro)
 	GetByCondominio(ctx context.Context, condominioID string, page, pageSize int) ([]*models.Communication, int, error)
+
+	// ListVisible obtiene comunicados visibles para un usuario según rol y fecha
+	ListVisible(ctx context.Context, condominioID, userID, userRole string, page, pageSize int) ([]*models.Communication, int, error)
 
 	// Create crea un nuevo comunicado
 	Create(ctx context.Context, communication *models.Communication) error
@@ -139,15 +150,40 @@ type CommunicationRepository interface {
 
 	// Delete elimina un comunicado (multi-tenant)
 	Delete(ctx context.Context, communicationID, condominioID string) error
+
+	// MarkRead marca un comunicado como leído por un usuario
+	MarkRead(ctx context.Context, communicationID, userID string) error
+
+	// UnreadCount retorna la cantidad de comunicados sin leer para un usuario
+	UnreadCount(ctx context.Context, condominioID, userID, userRole string) (int, error)
+
+	// ListComments obtiene los comentarios de un comunicado
+	ListComments(ctx context.Context, communicationID string) ([]*models.ComunicadoComentario, error)
+
+	// CreateComment crea un comentario en un comunicado
+	CreateComment(ctx context.Context, comment *models.ComunicadoComentario) error
 }
 
 // PackageRepository interfaz para operaciones con paquetes
 type PackageRepository interface {
 	FindByID(ctx context.Context, packageID, condominioID string) (*models.Package, error)
+	ListWithFilters(ctx context.Context, condominioID string, f dto.PackageFilter) ([]*models.Package, int, error)
 	GetByCondominio(ctx context.Context, condominioID string, page, pageSize int) ([]*models.Package, int, error)
 	GetByApartment(ctx context.Context, condominioID, apartmentID string, page, pageSize int) ([]*models.Package, int, error)
 	Create(ctx context.Context, pkg *models.Package) error
+	Update(ctx context.Context, packageID, condominioID string, fields map[string]interface{}) (*models.Package, error)
+	Delete(ctx context.Context, packageID, condominioID string) error
 	MarkDelivered(ctx context.Context, packageID, condominioID string) error
+}
+
+// NotificationRepository interfaz para notificaciones in-app
+type NotificationRepository interface {
+	Create(ctx context.Context, notif *models.Notification) error
+	ListByUser(ctx context.Context, userID, condominioID string, page, pageSize int) ([]*models.Notification, int, error)
+	MarkRead(ctx context.Context, notifID, userID string) error
+	MarkAllRead(ctx context.Context, userID, condominioID string) error
+	UnreadCount(ctx context.Context, userID, condominioID string) (int, error)
+	Delete(ctx context.Context, notifID, userID string) error
 }
 
 // CondominioRepository interfaz para operaciones con condominios
@@ -157,4 +193,13 @@ type CondominioRepository interface {
 
 	// GetAll obtiene todos los condominios
 	GetAll(ctx context.Context) ([]*models.Condominio, error)
+
+	// Update actualiza la información de un condominio
+	Update(ctx context.Context, condominio *models.Condominio) error
+
+	// Create crea un nuevo condominio
+	Create(ctx context.Context, condominio *models.Condominio) error
+
+	// Delete elimina un condominio
+	Delete(ctx context.Context, condominioID string) error
 }

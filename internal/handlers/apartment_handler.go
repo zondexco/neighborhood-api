@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"neighborhood-api/internal/repositories"
 	"neighborhood-api/internal/services"
 	"neighborhood-api/pkg/dto"
 	"neighborhood-api/pkg/logger"
@@ -13,15 +14,17 @@ import (
 
 // ApartmentHandler maneja las rutas de apartamentos
 type ApartmentHandler struct {
-	service services.ApartmentService
-	logger  logger.Logger
+	service  services.ApartmentService
+	userRepo repositories.UserRepository
+	logger   logger.Logger
 }
 
 // NewApartmentHandler crea un nuevo manejador
-func NewApartmentHandler(service services.ApartmentService, log logger.Logger) *ApartmentHandler {
+func NewApartmentHandler(service services.ApartmentService, userRepo repositories.UserRepository, log logger.Logger) *ApartmentHandler {
 	return &ApartmentHandler{
-		service: service,
-		logger:  log,
+		service:  service,
+		userRepo: userRepo,
+		logger:   log,
 	}
 }
 
@@ -112,6 +115,13 @@ func (h *ApartmentHandler) List(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	userIDStr, _ := userID.(string)
 
+	// Empleados y admins ven todos los apartamentos del condominio
+	role, _ := c.Get("role")
+	roleStr, _ := role.(string)
+	if roleStr == "empleado" || roleStr == "administrador" || roleStr == "admin" || roleStr == "dev" {
+		userIDStr = ""
+	}
+
 	result, err := h.service.List(c.Request.Context(), condominioID.(string), userIDStr, page, pageSize)
 	if err != nil {
 		h.logger.WithError(err).Error("error listing apartments")
@@ -182,4 +192,55 @@ func (h *ApartmentHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "apartment deleted successfully"})
+}
+
+// ListMembers obtiene los miembros (usuarios) de un apartamento
+// GET /api/v1/apartments/:id/members
+func (h *ApartmentHandler) ListMembers(c *gin.Context) {
+	condominioID, exists := c.Get("condominio_id")
+	if !exists {
+		Unauthorized(c, "unauthorized")
+		return
+	}
+
+	apartmentID := c.Param("id")
+	if apartmentID == "" {
+		BadRequest(c, "invalid request")
+		return
+	}
+
+	// Verificar que el apartamento pertenece al condominio
+	_, err := h.service.GetByID(c.Request.Context(), apartmentID, condominioID.(string))
+	if err != nil {
+		NotFound(c, "apartment not found")
+		return
+	}
+
+	users, err := h.userRepo.GetByApartment(c.Request.Context(), apartmentID)
+	if err != nil {
+		h.logger.WithError(err).WithField("apartment_id", apartmentID).Error("error listing apartment members")
+		InternalServerError(c, "internal server error")
+		return
+	}
+
+	type MemberDTO struct {
+		ID       string `json:"id"`
+		Nombre   string `json:"nombre"`
+		Apellido string `json:"apellido"`
+		Email    string `json:"email"`
+		Rol      string `json:"rol"`
+	}
+
+	members := make([]MemberDTO, len(users))
+	for i, u := range users {
+		members[i] = MemberDTO{
+			ID:       u.ID,
+			Nombre:   u.Nombre,
+			Apellido: u.Apellido,
+			Email:    u.Email,
+			Rol:      u.Rol,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": members, "total": len(members)})
 }

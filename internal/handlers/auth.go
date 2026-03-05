@@ -229,10 +229,13 @@ func (h *AuthHandler) handleAuthError(c *gin.Context, err error) {
 // @Tags health
 // @Produce json
 // @Success 200 {object} map[string]interface{}
-// @Router /health [get]
-func Health(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "ok",
-		"message": "API is running",
-	})
+// @Router /api/v1/health [get]
+func Health(version string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "ok",
+			"message": "API is running",
+			"version": version,
+		})
+	}
 }

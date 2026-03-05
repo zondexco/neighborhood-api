@@ -81,6 +81,16 @@ func (m *MockUserRepository) GetByCondominio(ctx context.Context, condominioID s
 	return users, len(users), nil
 }
 
+func (m *MockUserRepository) GetByApartment(ctx context.Context, apartmentID string) ([]*models.User, error) {
+	var users []*models.User
+	for _, user := range m.users {
+		if user.ApartmentID != nil && *user.ApartmentID == apartmentID {
+			users = append(users, user)
+		}
+	}
+	return users, nil
+}
+
 // MockCondominioRepository mock de CondominioRepository para tests
 type MockCondominioRepository struct {
 	condominios map[string]*models.Condominio
@@ -105,6 +115,22 @@ func (m *MockCondominioRepository) GetAll(ctx context.Context) ([]*models.Condom
 		condominios = append(condominios, cond)
 	}
 	return condominios, nil
+}
+
+func (m *MockCondominioRepository) Update(ctx context.Context, condominio *models.Condominio) error {
+	m.condominios[condominio.ID] = condominio
+	return nil
+}
+
+func (m *MockCondominioRepository) Create(ctx context.Context, condominio *models.Condominio) error {
+	condominio.ID = "cond-new"
+	m.condominios[condominio.ID] = condominio
+	return nil
+}
+
+func (m *MockCondominioRepository) Delete(ctx context.Context, condominioID string) error {
+	delete(m.condominios, condominioID)
+	return nil
 }
 
 // TestAuthServiceLogin test login exitoso
@@ -229,7 +255,7 @@ func TestAuthServiceValidateToken(t *testing.T) {
 	jwtManager := utils.NewJWTManager(jwtConfig)
 
 	// Generar token válido
-	token, err := jwtManager.GenerateToken("user-001", "test@example.com", "cond-001", "residente")
+	token, err := jwtManager.GenerateToken("user-001", "test@example.com", "cond-001", "residente", "")
 	if err != nil {
 		t.Errorf("Error generating token: %v", err)
 	}

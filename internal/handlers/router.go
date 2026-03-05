@@ -8,13 +8,15 @@ import (
 
 // Router estructura para manejar rutas
 type Router struct {
-	engine *gin.Engine
+	engine     *gin.Engine
+	appVersion string
 }
 
 // NewRouter crea un nuevo router
-func NewRouter(engine *gin.Engine) *Router {
+func NewRouter(engine *gin.Engine, appVersion string) *Router {
 	return &Router{
-		engine: engine,
+		engine:     engine,
+		appVersion: appVersion,
 	}
 }
 
@@ -28,13 +30,13 @@ func (r *Router) SetupRoutes(
 	packageHandler *PackageHandler,
 	spaceHandler *SpaceHandler,
 	adminHandler *AdminHandler,
-	dashboardHandler *DashboardHandler, // Nuevo handler inyectado
+	dashboardHandler *DashboardHandler,
+	devHandler *DevHandler,
+	notificationHandler *NotificationHandler,
 ) {
-	// Health check
-	r.engine.GET("/health", Health)
-
 	// API v1
 	v1 := r.engine.Group("/api/v1")
+	v1.GET("/health", Health(r.appVersion))
 
 	// Auth routes (sin protección)
 	auth := v1.Group("/auth")
@@ -64,6 +66,8 @@ func (r *Router) SetupRoutes(
 			// Invoices por apartamento - DENTRO del grupo
 			apartments.GET("/:id/invoices", invoiceHandler.ListByApartment)
 			apartments.GET("/:id/packages", packageHandler.ListByApartment)
+			apartments.GET("/:id/reservations", reservationHandler.ListByApartment)
+			apartments.GET("/:id/members", apartmentHandler.ListMembers)
 		}
 
 		// Invoice routes
@@ -108,30 +112,54 @@ func (r *Router) SetupRoutes(
 			spaces.DELETE("/:id", spaceHandler.Delete)
 		}
 
-		// Communication routes
+		// Communication routes (any authenticated user)
 		communications := protected.Group("/communications")
 		{
-			communications.POST("", communicationHandler.CreateCommunication)
 			communications.GET("", communicationHandler.ListCommunications)
+			communications.GET("/unread-count", communicationHandler.UnreadCount)
 			communications.GET("/:id", communicationHandler.GetCommunication)
-			communications.PUT("/:id", communicationHandler.UpdateCommunication)
-			communications.DELETE("/:id", communicationHandler.DeleteCommunication)
+			communications.PUT("/:id/read", communicationHandler.MarkRead)
+			communications.GET("/:id/comments", communicationHandler.ListComments)
+			communications.POST("/:id/comments", communicationHandler.CreateComment)
 		}
+
+		// Condominio info (any authenticated user can read)
+		protected.GET("/condominio", adminHandler.GetCondominio)
 
 		// Package routes
 		packages := protected.Group("/packages")
 		{
 			packages.POST("", packageHandler.Create)
 			packages.GET("", packageHandler.List)
+			packages.GET("/:id", packageHandler.GetByID)
+			packages.PUT("/:id", packageHandler.Update)
+			packages.DELETE("/:id", packageHandler.Delete)
 			packages.PUT("/:id/deliver", packageHandler.MarkDelivered)
 			packages.POST("/:id/notify", packageHandler.Notify)
 		}
 
+		// Notification routes (any authenticated user)
+		notifications := protected.Group("/notifications")
+		{
+			notifications.GET("", notificationHandler.List)
+			notifications.GET("/unread-count", notificationHandler.UnreadCount)
+			notifications.PUT("/read-all", notificationHandler.MarkAllRead)
+			notifications.PUT("/:id/read", notificationHandler.MarkRead)
+			notifications.DELETE("/:id", notificationHandler.Delete)
+		}
+
+		// Dashboard routes (for authenticated residents)
+		dashboard := protected.Group("/dashboard")
+		{
+			dashboard.GET("/summary", dashboardHandler.GetResidentSummary)
+		}
+
 		// Admin routes
 		admin := protected.Group("/admin")
-		admin.Use(middleware.RequireRoles("administrador", "admin"))
+		admin.Use(middleware.RequireRoles("administrador", "admin", "dev"))
 		{
 			admin.GET("/condominio", adminHandler.GetCondominio)
+			admin.PUT("/condominio", adminHandler.UpdateCondominio)
 			admin.GET("/stats", adminHandler.GetStats)
 			admin.GET("/users", adminHandler.ListUsers)
 			admin.GET("/users/:id", adminHandler.GetUserByID)
@@ -143,7 +171,25 @@ func (r *Router) SetupRoutes(
 			admin.POST("/apartments", adminHandler.CreateApartment)
 			admin.PUT("/apartments/:id", adminHandler.UpdateApartment)
 			admin.DELETE("/apartments/:id", adminHandler.DeleteApartment)
+			admin.GET("/communications", adminHandler.ListCommunicationsAdmin)
 			admin.POST("/communications", adminHandler.CreateCommunication)
+			admin.PUT("/communications/:id", adminHandler.UpdateCommunication)
+			admin.DELETE("/communications/:id", adminHandler.DeleteCommunication)
+		}
+
+		// Dev routes (dev role only)
+		dev := protected.Group("/dev")
+		dev.Use(middleware.RequireRoles("dev"))
+		{
+			dev.GET("/condominios", devHandler.ListCondominios)
+			dev.POST("/condominios", devHandler.CreateCondominio)
+			dev.PUT("/condominios/:id", devHandler.UpdateCondominio)
+			dev.DELETE("/condominios/:id", devHandler.DeleteCondominio)
+			dev.GET("/condominios/:id/admins", devHandler.ListAdminsByCondominio)
+			dev.POST("/condominios/:id/admins", devHandler.CreateAdminForCondominio)
+			dev.PUT("/condominios/:id/admins/:userId", devHandler.UpdateAdminInCondominio)
+			dev.DELETE("/condominios/:id/admins/:userId", devHandler.DeleteAdminFromCondominio)
+			dev.POST("/impersonate", devHandler.Impersonate)
 		}
 	}
 }

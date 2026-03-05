@@ -27,10 +27,13 @@ type LoginResponse struct {
 	RefreshToken   string    `json:"refresh_token"`
 	UserID         string    `json:"user_id"`
 	Email          string    `json:"email"`
+	Nombre         string    `json:"nombre"`
+	Apellido       string    `json:"apellido"`
 	CondominioID   string    `json:"condominio_id"`
 	CondominioName string    `json:"condominio_nombre"`
 	Role           string    `json:"role"`
 	IsAdmin        bool      `json:"is_admin"`
+	ApartmentID    string    `json:"apartment_id"` // "" si el usuario no tiene apartamento
 	Permissions    []string  `json:"permissions"`
 	ExpiresAt      time.Time `json:"expires_at"`
 }
@@ -201,14 +204,21 @@ type ReservationsListResponse struct {
 
 // CommunicationDTO estructura de comunicado
 type CommunicationDTO struct {
-	ID           string    `json:"id"`
-	Titulo       string    `json:"titulo"`
-	Contenido    string    `json:"contenido"`
-	Fecha        time.Time `json:"fecha"`
-	Autor        string    `json:"autor"`
-	CondominioID string    `json:"condominio_id"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID                 string    `json:"id"`
+	Titulo             string    `json:"titulo"`
+	Contenido          string    `json:"contenido"`
+	Fecha              time.Time `json:"fecha"`
+	Autor              string    `json:"autor"`
+	CondominioID       string    `json:"condominio_id"`
+	ProgramadoPara     *time.Time `json:"programado_para,omitempty"`
+	RolesDestino       []string  `json:"roles_destino,omitempty"`
+	Icono              string    `json:"icono"`
+	PermiteComentarios bool      `json:"permite_comentarios"`
+	Publicado          bool      `json:"publicado"`
+	Leido              bool      `json:"leido"`
+	NumComentarios     int       `json:"num_comentarios"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 // CommunicationsListResponse respuesta con lista de comunicados
@@ -276,28 +286,96 @@ type InvoicesListResponse struct {
 
 // CreateCommunicationRequest estructura para crear un comunicado
 type CreateCommunicationRequest struct {
-	Titulo    string     `json:"titulo" binding:"required"`
-	Contenido string     `json:"contenido" binding:"required"`
-	Fecha     *time.Time `json:"fecha,omitempty"`
+	Titulo             string     `json:"titulo" binding:"required"`
+	Contenido          string     `json:"contenido" binding:"required"`
+	Fecha              *time.Time `json:"fecha,omitempty"`
+	ProgramadoPara     *time.Time `json:"programado_para,omitempty"`
+	RolesDestino       []string   `json:"roles_destino,omitempty"`
+	Icono              string     `json:"icono"`
+	PermiteComentarios bool       `json:"permite_comentarios"`
+	Publicado          *bool      `json:"publicado,omitempty"`
 }
 
 // UpdateCommunicationRequest estructura para actualizar un comunicado
 type UpdateCommunicationRequest struct {
-	Titulo    *string    `json:"titulo,omitempty"`
-	Contenido *string    `json:"contenido,omitempty"`
-	Fecha     *time.Time `json:"fecha,omitempty"`
+	Titulo             *string    `json:"titulo,omitempty"`
+	Contenido          *string    `json:"contenido,omitempty"`
+	Fecha              *time.Time `json:"fecha,omitempty"`
+	ProgramadoPara     *time.Time `json:"programado_para,omitempty"`
+	RolesDestino       []string   `json:"roles_destino,omitempty"`
+	Icono              *string    `json:"icono,omitempty"`
+	PermiteComentarios *bool      `json:"permite_comentarios,omitempty"`
+	Publicado          *bool      `json:"publicado,omitempty"`
 }
 
 // CommunicationResponse estructura de respuesta de comunicado
 type CommunicationResponse struct {
-	ID           string    `json:"id"`
-	Titulo       string    `json:"titulo"`
-	Contenido    string    `json:"contenido"`
-	Fecha        time.Time `json:"fecha"`
-	Autor        string    `json:"autor"`
-	CondominioID string    `json:"condominio_id"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID                 string     `json:"id"`
+	Titulo             string     `json:"titulo"`
+	Contenido          string     `json:"contenido"`
+	Fecha              time.Time  `json:"fecha"`
+	Autor              string     `json:"autor"`
+	CondominioID       string     `json:"condominio_id"`
+	ProgramadoPara     *time.Time `json:"programado_para,omitempty"`
+	RolesDestino       []string   `json:"roles_destino,omitempty"`
+	Icono              string     `json:"icono"`
+	PermiteComentarios bool       `json:"permite_comentarios"`
+	Publicado          bool       `json:"publicado"`
+	Leido              bool       `json:"leido"`
+	NumComentarios     int        `json:"num_comentarios"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
+}
+
+// CommentResponse estructura de respuesta de comentario
+type CommentResponse struct {
+	ID            string    `json:"id"`
+	IDComunicado  string    `json:"id_comunicado"`
+	IDUsuario     string    `json:"id_usuario"`
+	Contenido     string    `json:"contenido"`
+	AutorNombre   string    `json:"autor_nombre"`
+	AutorApellido string    `json:"autor_apellido"`
+	FechaCreacion time.Time `json:"fecha_creacion"`
+}
+
+// CreateCommentRequest estructura para crear un comentario
+type CreateCommentRequest struct {
+	Contenido string `json:"contenido" binding:"required"`
+}
+
+// UnreadCountResponse conteo de comunicados sin leer
+type UnreadCountResponse struct {
+	Count int `json:"count"`
+}
+
+// UpdateCondominioRequest estructura para actualizar info del condominio
+type UpdateCondominioRequest struct {
+	Nombre             *string `json:"nombre,omitempty"`
+	Direccion          *string `json:"direccion,omitempty"`
+	Ciudad             *string `json:"ciudad,omitempty"`
+	Telefono           *string `json:"telefono,omitempty"`
+	Email              *string `json:"email,omitempty"`
+	NIT                *string `json:"nit,omitempty"`
+	RepresentanteLegal *string `json:"representante_legal,omitempty"`
+	PermiteSoporte     *bool   `json:"permite_soporte,omitempty"`
+}
+
+// ========== Dev DTOs ==========
+
+// CreateCondominioRequest estructura para crear un condominio (dev only)
+type CreateCondominioRequest struct {
+	Nombre             string  `json:"nombre" binding:"required"`
+	Direccion          string  `json:"direccion" binding:"required"`
+	Ciudad             string  `json:"ciudad" binding:"required"`
+	Telefono           *string `json:"telefono,omitempty"`
+	Email              *string `json:"email,omitempty"`
+	NIT                *string `json:"nit,omitempty"`
+	RepresentanteLegal *string `json:"representante_legal,omitempty"`
+}
+
+// ImpersonateRequest estructura para impersonar un condominio (dev only)
+type ImpersonateRequest struct {
+	CondominioID string `json:"condominio_id" binding:"required"`
 }
 
 // ========== Package DTOs ==========
@@ -307,6 +385,25 @@ type CreatePackageRequest struct {
 	Resident    string  `json:"resident" binding:"required"`
 	Carrier     string  `json:"carrier" binding:"required"`
 	Notes       *string `json:"notes,omitempty"`
+}
+
+type UpdatePackageRequest struct {
+	Notes       *string `json:"notes,omitempty"`
+	Resident    *string `json:"resident,omitempty"`    // admin only
+	Carrier     *string `json:"carrier,omitempty"`     // admin only
+	ApartmentID *string `json:"apartment_id,omitempty"` // admin only
+}
+
+// PackageFilter parámetros de filtrado para listado de paquetes
+type PackageFilter struct {
+	Status      string    // "pending" | "delivered" | "" (todos)
+	ApartmentID string    // UUID | "" (todos) — forzado al del JWT para residentes
+	Carrier     string    // exacto | ""
+	Search      string    // ILIKE en resident + carrier
+	DateFrom    time.Time // zero = sin límite inferior
+	DateTo      time.Time // zero = sin límite superior
+	Page        int
+	PageSize    int
 }
 
 type PackageResponse struct {
@@ -336,4 +433,38 @@ type SuccessResponse struct {
 type PaginationParams struct {
 	Page     int `form:"page,default=1" binding:"min=1"`
 	PageSize int `form:"page_size,default=10" binding:"min=1,max=100"`
+}
+
+// ========== Dashboard DTOs ==========
+
+// DashboardPackageItem resumen de un paquete pendiente
+type DashboardPackageItem struct {
+	ID          string    `json:"id"`
+	Carrier     string    `json:"carrier"`
+	ReceivedAt  time.Time `json:"received_at"`
+	Apartment   string    `json:"apartment"`
+}
+
+// DashboardReservation próxima reserva del residente
+type DashboardReservation struct {
+	ID          string    `json:"id"`
+	EspacioID   string    `json:"espacio_id"`
+	FechaInicio time.Time `json:"fecha_inicio"`
+	FechaFin    time.Time `json:"fecha_fin"`
+	Estado      string    `json:"estado"`
+}
+
+// DashboardNewsItem comunicado reciente
+type DashboardNewsItem struct {
+	ID     string    `json:"id"`
+	Titulo string    `json:"titulo"`
+	Fecha  time.Time `json:"fecha"`
+}
+
+// DashboardSummaryResponse resumen del dashboard para el residente
+type DashboardSummaryResponse struct {
+	PackagesPending int                    `json:"packages_pending"`
+	PendingPackages []DashboardPackageItem `json:"pending_packages"`
+	NextReservation *DashboardReservation  `json:"next_reservation"`
+	RecentNews      []DashboardNewsItem    `json:"recent_news"`
 }

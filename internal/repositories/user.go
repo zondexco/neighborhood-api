@@ -277,3 +277,41 @@ func (r *UserRepositoryImpl) GetByCondominio(ctx context.Context, condominioID s
 
 	return users, total, nil
 }
+
+// GetByApartment obtiene todos los usuarios asignados a un apartamento
+func (r *UserRepositoryImpl) GetByApartment(ctx context.Context, apartmentID string) ([]*models.User, error) {
+	query := `
+		SELECT id_usuario, email, nombres, apellidos, telefono, celular, id_condominio, id_apartamento,
+			password, rol, estado, fecha_creacion, ultimo_acceso, tipo_documento, numero_documento
+		FROM usuario
+		WHERE id_apartamento = $1
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, apartmentID)
+	if err != nil {
+		r.log.WithError(err).Error("Error querying users by apartment")
+		return nil, errors.DatabaseErrorf("error querying users by apartment").WithError(err)
+	}
+	defer rows.Close()
+
+	users := make([]*models.User, 0)
+	for rows.Next() {
+		user := &models.User{}
+		err := rows.Scan(
+			&user.ID, &user.Email, &user.Nombre, &user.Apellido, &user.Telefono,
+			&user.Celular, &user.CondominioID, &user.ApartmentID, &user.PIN, &user.Rol, &user.Estado, &user.CreatedAt, &user.UpdatedAt,
+			&user.TipoDoc, &user.NumeroDoc,
+		)
+		if err != nil {
+			r.log.WithError(err).Error("Error scanning user")
+			return nil, errors.DatabaseErrorf("error scanning user").WithError(err)
+		}
+		users = append(users, user)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, errors.DatabaseErrorf("error iterating users").WithError(err)
+	}
+
+	return users, nil
+}

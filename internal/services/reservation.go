@@ -21,8 +21,10 @@ type ReservationService interface {
 	List(ctx context.Context, condominioID string, page, pageSize int) ([]*dto.ReservationResponse, int, error)
 	ListByUsuario(ctx context.Context, usuarioID, condominioID string, page, pageSize int) ([]*dto.ReservationResponse, int, error)
 	ListByEspacio(ctx context.Context, espacioID, condominioID string, page, pageSize int) ([]*dto.ReservationResponse, int, error)
+	ListByApartment(ctx context.Context, apartmentID, condominioID string, page, pageSize int) ([]*dto.ReservationResponse, int, error)
 	Update(ctx context.Context, reservationID string, req *dto.UpdateReservationRequest, condominioID string) (*dto.ReservationResponse, error)
 	Delete(ctx context.Context, reservationID, condominioID string) error
+	GetEspacioNombre(ctx context.Context, espacioID, condominioID string) (string, error)
 }
 
 // ReservationServiceImpl implementa ReservationService
@@ -178,6 +180,25 @@ func (s *ReservationServiceImpl) ListByEspacio(ctx context.Context, espacioID, c
 	return responses, total, nil
 }
 
+// ListByApartment obtiene reservas de todos los miembros de un apartamento
+func (s *ReservationServiceImpl) ListByApartment(ctx context.Context, apartmentID, condominioID string, page, pageSize int) ([]*dto.ReservationResponse, int, error) {
+	if apartmentID == "" {
+		return nil, 0, errors.New("apartment_id is required")
+	}
+
+	reservations, total, err := s.reservationRepo.GetByApartment(ctx, apartmentID, condominioID, page, pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	responses := make([]*dto.ReservationResponse, len(reservations))
+	for i, reservation := range reservations {
+		responses[i] = toReservationResponse(reservation)
+	}
+
+	return responses, total, nil
+}
+
 // Update actualiza una reserva
 func (s *ReservationServiceImpl) Update(ctx context.Context, reservationID string, req *dto.UpdateReservationRequest, condominioID string) (*dto.ReservationResponse, error) {
 	if reservationID == "" {
@@ -294,6 +315,15 @@ func buildInvoiceNote(res *models.Reservation, spaceName string) *string {
 	}
 	note := "Factura generada por reserva del espacio " + label + " del " + start + " al " + end
 	return &note
+}
+
+// GetEspacioNombre obtiene el nombre de un espacio común
+func (s *ReservationServiceImpl) GetEspacioNombre(ctx context.Context, espacioID, condominioID string) (string, error) {
+	name, err := s.reservationRepo.GetEspacioNombre(ctx, espacioID, condominioID)
+	if err != nil || name == "" {
+		return espacioID, err
+	}
+	return name, nil
 }
 
 // Delete elimina una reserva
