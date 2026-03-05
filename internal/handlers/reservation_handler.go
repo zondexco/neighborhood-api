@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 
@@ -316,16 +317,18 @@ func (h *ReservationHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Notificar al dueño si cambió el estado (best-effort, en goroutine)
+	// Notificar al dueño si cambió el estado (best-effort, en goroutine).
+	// Usamos context.WithoutCancel para que no se cancele al enviar la respuesta.
 	if req.Estado != nil && *req.Estado != "" {
 		condID := condominioID.(string)
 		newEstado := *req.Estado
 		resID := reservation.ID
 		userID := reservation.UsuarioID
 		espacioID := reservation.EspacioID
+		detachedCtx := context.WithoutCancel(c.Request.Context())
 		go func() {
-			espacioNombre, _ := h.service.GetEspacioNombre(c.Request.Context(), espacioID, condID)
-			_ = h.notifService.NotifyReservationStatus(c.Request.Context(), condID, userID, resID, espacioNombre, newEstado)
+			espacioNombre, _ := h.service.GetEspacioNombre(detachedCtx, espacioID, condID)
+			_ = h.notifService.NotifyReservationStatus(detachedCtx, condID, userID, resID, espacioNombre, newEstado)
 		}()
 	}
 

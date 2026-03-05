@@ -1,6 +1,6 @@
 # Dockerfile for neighborhood-api
 
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -20,7 +20,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o neighborhood-api ./cmd/api
 
 # Final stage
-FROM alpine:latest
+FROM alpine:3.21
 
 RUN apk --no-cache add ca-certificates
 

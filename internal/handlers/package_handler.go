@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"strings"
@@ -49,9 +50,12 @@ func (h *PackageHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Notificar a los residentes del apartamento (best-effort)
+	// Notificar a los residentes del apartamento (best-effort).
+	// Usamos context.WithoutCancel para que la goroutine no se cancele
+	// al enviar la respuesta HTTP.
+	detachedCtx := context.WithoutCancel(c.Request.Context())
 	go h.notifService.NotifyPackage(
-		c.Request.Context(),
+		detachedCtx,
 		condominioID,
 		req.ApartmentID,
 		pkg.ID,

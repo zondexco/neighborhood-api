@@ -14,8 +14,10 @@ import (
 )
 
 const (
-	argon2MemoryKB uint32 = 64 * 1024
-	argon2Time     uint32 = 3
+	// 19 MiB — OWASP minimum recommendation.
+	// Reduced from 64 MiB to prevent OOM under concurrent logins (64 MB × N).
+	argon2MemoryKB uint32 = 19 * 1024
+	argon2Time     uint32 = 4 // bumped from 3 to compensate for lower memory
 	argon2Threads  uint8  = 2
 	argon2KeyLen   uint32 = 32
 	argon2SaltLen  uint32 = 16

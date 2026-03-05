@@ -2,9 +2,9 @@ package services
 
 import (
 	"context"
+	cryptorand "crypto/rand"
 	"errors"
 	"math"
-	"math/rand"
 	"time"
 
 	"github.com/google/uuid"
@@ -296,9 +296,10 @@ func (s *ReservationServiceImpl) createInvoiceForReservation(ctx context.Context
 func generateInvoiceNumber() string {
 	letters := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 	res := make([]rune, 6)
-	randSrc := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := range res {
-		res[i] = letters[randSrc.Intn(len(letters))]
+		b := make([]byte, 1)
+		_, _ = cryptorand.Read(b)
+		res[i] = letters[int(b[0])%len(letters)]
 	}
 	return "RES-" + string(res)
 }

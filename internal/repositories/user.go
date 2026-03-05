@@ -238,10 +238,10 @@ func (r *UserRepositoryImpl) GetByCondominio(ctx context.Context, condominioID s
 		return nil, 0, errors.DatabaseErrorf("error counting users").WithError(err)
 	}
 
-	// Obtener registros
+	// Obtener registros (excluye password de listados)
 	query := `
 		SELECT id_usuario, email, nombres, apellidos, telefono, celular, id_condominio, id_apartamento,
-			password, rol, estado, fecha_creacion, ultimo_acceso, tipo_documento, numero_documento
+			'' AS password, rol, estado, fecha_creacion, ultimo_acceso, tipo_documento, numero_documento
 		FROM usuario
 		WHERE id_condominio = $1
 		ORDER BY fecha_creacion DESC
@@ -282,7 +282,7 @@ func (r *UserRepositoryImpl) GetByCondominio(ctx context.Context, condominioID s
 func (r *UserRepositoryImpl) GetByApartment(ctx context.Context, apartmentID string) ([]*models.User, error) {
 	query := `
 		SELECT id_usuario, email, nombres, apellidos, telefono, celular, id_condominio, id_apartamento,
-			password, rol, estado, fecha_creacion, ultimo_acceso, tipo_documento, numero_documento
+			'' AS password, rol, estado, fecha_creacion, ultimo_acceso, tipo_documento, numero_documento
 		FROM usuario
 		WHERE id_apartamento = $1
 	`

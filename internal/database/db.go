@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -73,7 +74,7 @@ func New(cfg config.DatabaseConfig) (*DB, error) {
 
 // Health verifica el estado de la base de datos
 func (db *DB) Health() error {
-	ctx, cancel := ContextWithTimeout(5 * time.Second)
+	ctx, cancel := ContextWithTimeout(nil, 5*time.Second)
 	defer cancel()
 
 	err := db.PingContext(ctx)
@@ -85,9 +86,10 @@ func (db *DB) Health() error {
 	return nil
 }
 
-// BeginTx inicia una transacción
-func (db *DB) BeginTx() (*sql.Tx, error) {
-	ctx, cancel := ContextWithTimeout(30 * time.Second)
+// BeginTx inicia una transacción. Propaga el contexto del request para
+// que cancelaciones del cliente cancelen también la transacción.
+func (db *DB) BeginTx(parent context.Context) (*sql.Tx, error) {
+	ctx, cancel := ContextWithTimeout(parent, 30*time.Second)
 	defer cancel()
 
 	tx, err := db.DB.BeginTx(ctx, nil)
