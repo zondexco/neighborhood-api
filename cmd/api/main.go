@@ -84,6 +84,12 @@ func main() {
 		WithField("environment", cfg.Server.Environment).
 		Info("Starting application")
 
+	log.WithField("cors_allowed_origins", cfg.CORS.AllowedOrigins).
+		WithField("cors_allowed_methods", cfg.CORS.AllowedMethods).
+		WithField("cors_allowed_headers", cfg.CORS.AllowedHeaders).
+		WithField("cors_allow_credentials", cfg.CORS.AllowCredentials).
+		Info("CORS configuration loaded")
+
 	// Conectar a base de datos
 	db, err := database.New(cfg.Database)
 	if err != nil {
