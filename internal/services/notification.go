@@ -47,18 +47,18 @@ func (s *notificationServiceImpl) NotifyPackage(ctx context.Context, condominioI
 	}
 
 	refID := packageID
+	notifs := make([]*models.Notification, 0, len(users))
 	for _, u := range users {
-		notif := &models.Notification{
+		notifs = append(notifs, &models.Notification{
 			UserID:       u.ID,
 			CondominioID: condominioID,
 			Tipo:         "paquete",
 			Titulo:       "Paquete recibido",
 			Mensaje:      "Llegó un paquete de " + carrier + " para " + apartmentLabel + ". Puedes retirarlo en la portería.",
 			ReferenciaID: &refID,
-		}
-		_ = s.repo.Create(ctx, notif) // best-effort: no falla la operación principal
+		})
 	}
-	return nil
+	return s.repo.CreateBatch(ctx, notifs) // single round-trip instead of N inserts
 }
 
 func (s *notificationServiceImpl) NotifyReservationStatus(ctx context.Context, condominioID, userID, reservationID, espacioNombre, newEstado string) error {

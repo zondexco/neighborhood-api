@@ -84,6 +84,12 @@ func main() {
 		WithField("environment", cfg.Server.Environment).
 		Info("Starting application")
 
+	log.WithField("cors_allowed_origins", cfg.CORS.AllowedOrigins).
+		WithField("cors_allowed_methods", cfg.CORS.AllowedMethods).
+		WithField("cors_allowed_headers", cfg.CORS.AllowedHeaders).
+		WithField("cors_allow_credentials", cfg.CORS.AllowCredentials).
+		Info("CORS configuration loaded")
+
 	// Conectar a base de datos
 	db, err := database.New(cfg.Database)
 	if err != nil {
@@ -126,10 +132,21 @@ func main() {
 	}
 
 	engine := gin.New()
+	engine.MaxMultipartMemory = 10 << 20 // 10 MB for multipart uploads
+
+	// Rate limiting — protege contra sobrecarga y abuso
+	rl := middleware.NewRateLimiter(middleware.DefaultRateLimitConfig())
 
 	// Middleware global
 	engine.Use(gin.Recovery())
+	engine.Use(middleware.GlobalRateLimitMiddleware(rl))
 	engine.Use(middleware.CORSMiddleware(cfg.CORS))
+
+	// Request body size limit (1 MB default for JSON APIs)
+	engine.Use(func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20)
+		c.Next()
+	})
 
 	// Request logging middleware
 	engine.Use(func(c *gin.Context) {
@@ -147,17 +164,24 @@ func main() {
 		c.Next()
 
 		latency := time.Since(start)
-		requestLog := log.WithField("request_id", requestID).
-			WithField("method", c.Request.Method).
-			WithField("path", c.Request.URL.Path).
-			WithField("status", writer.status).
-			WithField("latency_ms", latency.Milliseconds()).
-			WithField("response_bytes", writer.size).
-			WithField("client_ip", c.ClientIP())
+
+		// Use a single WithFields call instead of chaining 6-7 WithField calls
+		// to reduce intermediate logger allocations at high rps.
+		fields := map[string]interface{}{
+			"request_id":     requestID,
+			"method":         c.Request.Method,
+			"path":           c.Request.URL.Path,
+			"status":         writer.status,
+			"latency_ms":     latency.Milliseconds(),
+			"response_bytes": writer.size,
+			"client_ip":      c.ClientIP(),
+		}
 
 		if condominioID, exists := c.Get("condominio_id"); exists {
-			requestLog = requestLog.WithField("condominio_id", condominioID)
+			fields["condominio_id"] = condominioID
 		}
+
+		requestLog := log.WithFields(fields)
 
 		if writer.status >= 500 {
 			requestLog.Error("HTTP request completed with server error")
@@ -196,6 +220,7 @@ func main() {
 		ReadTimeout:       time.Duration(cfg.Server.ReadTimeout) * time.Second,
 		WriteTimeout:      time.Duration(cfg.Server.WriteTimeout) * time.Second,
 		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1 MB
 	}
 
 	// Iniciar servidor en goroutine

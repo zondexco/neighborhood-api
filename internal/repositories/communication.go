@@ -170,9 +170,9 @@ func (r *CommunicationRepositoryImpl) ListVisible(ctx context.Context, condomini
 			COALESCE(cc.cnt, 0) AS num_comentarios
 		FROM comunicado c
 		LEFT JOIN comunicado_lectura cl ON cl.id_comunicado = c.id_comunicado AND cl.id_usuario = $3
-		LEFT JOIN (
-			SELECT id_comunicado, COUNT(*) AS cnt FROM comunicado_comentario GROUP BY id_comunicado
-		) cc ON cc.id_comunicado = c.id_comunicado
+		LEFT JOIN LATERAL (
+			SELECT COUNT(*) AS cnt FROM comunicado_comentario cc WHERE cc.id_comunicado = c.id_comunicado
+		) cc ON true
 	` + whereClause + `
 		ORDER BY c.fecha_publicacion DESC
 		LIMIT $4 OFFSET $5

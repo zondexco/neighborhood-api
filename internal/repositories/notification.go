@@ -3,6 +3,8 @@ package repositories
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"strings"
 
 	"neighborhood-api/internal/database"
 	"neighborhood-api/internal/models"
@@ -28,6 +30,29 @@ func (r *NotificationRepositoryImpl) Create(ctx context.Context, notif *models.N
 		notif.UserID, notif.CondominioID, notif.Tipo,
 		notif.Titulo, notif.Mensaje, notif.ReferenciaID,
 	).Scan(&notif.ID, &notif.FechaCreacion)
+}
+
+// CreateBatch inserta múltiples notificaciones en un solo round-trip.
+func (r *NotificationRepositoryImpl) CreateBatch(ctx context.Context, notifs []*models.Notification) error {
+	if len(notifs) == 0 {
+		return nil
+	}
+
+	// Build multi-row INSERT: INSERT INTO notificacion (...) VALUES ($1,$2,...), ($7,$8,...)
+	valueStrings := make([]string, 0, len(notifs))
+	args := make([]interface{}, 0, len(notifs)*6)
+	for i, n := range notifs {
+		base := i * 6
+		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)",
+			base+1, base+2, base+3, base+4, base+5, base+6))
+		args = append(args, n.UserID, n.CondominioID, n.Tipo, n.Titulo, n.Mensaje, n.ReferenciaID)
+	}
+
+	query := `INSERT INTO notificacion (id_usuario, id_condominio, tipo, titulo, mensaje, referencia_id) VALUES ` +
+		strings.Join(valueStrings, ", ")
+
+	_, err := r.db.ExecContext(ctx, query, args...)
+	return err
 }
 
 func (r *NotificationRepositoryImpl) ListByUser(ctx context.Context, userID, condominioID string, page, pageSize int) ([]*models.Notification, int, error) {

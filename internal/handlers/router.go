@@ -38,10 +38,10 @@ func (r *Router) SetupRoutes(
 	v1 := r.engine.Group("/api/v1")
 	v1.GET("/health", Health(r.appVersion))
 
-	// Auth routes (sin protección)
+	// Auth routes (sin protección — con strict rate limit en login)
 	auth := v1.Group("/auth")
 	{
-		auth.POST("/login", authHandler.Login)
+		auth.POST("/login", middleware.StrictRateLimitMiddleware(10, 5), authHandler.Login)
 		auth.POST("/refresh", authHandler.Refresh)
 	}
 

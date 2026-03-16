@@ -274,32 +274,35 @@ func (h *AdminHandler) GetStats(c *gin.Context) {
 		return
 	}
 
-	// Calcular estadísticas del condominio
-	users, _, err := h.userRepository.GetByCondominio(c.Request.Context(), condominioID.(string), 1, 1000)
+	condID := condominioID.(string)
+	ctx := c.Request.Context()
+
+	// Usar COUNT(*) directas en vez de cargar filas completas
+	_, totalUsers, err := h.userRepository.GetByCondominio(ctx, condID, 1, 1)
 	if err != nil {
-		h.logger.WithError(err).Error("error fetching users for stats")
+		h.logger.WithError(err).Error("error fetching user count for stats")
 		InternalServerError(c, "error fetching users")
 		return
 	}
 
-	apartments, _, err := h.apartmentRepository.GetByCondominio(c.Request.Context(), condominioID.(string), 1, 1000)
+	_, totalApartments, err := h.apartmentRepository.GetByCondominio(ctx, condID, 1, 1)
 	if err != nil {
-		h.logger.WithError(err).Error("error fetching apartments for stats")
+		h.logger.WithError(err).Error("error fetching apartment count for stats")
 		InternalServerError(c, "error fetching apartments")
 		return
 	}
 
-	communications, _, err := h.communicationRepository.GetByCondominio(c.Request.Context(), condominioID.(string), 1, 1000)
+	_, totalCommunications, err := h.communicationRepository.GetByCondominio(ctx, condID, 1, 1)
 	if err != nil {
-		h.logger.WithError(err).Error("error fetching communications for stats")
+		h.logger.WithError(err).Error("error fetching communication count for stats")
 		InternalServerError(c, "error fetching communications")
 		return
 	}
 
 	stats := map[string]interface{}{
-		"total_usuarios":      len(users),
-		"total_apartamentos":  len(apartments),
-		"comunicaciones_mes":  len(communications),
+		"total_usuarios":      totalUsers,
+		"total_apartamentos":  totalApartments,
+		"comunicaciones_mes":  totalCommunications,
 		"facturas_pendientes": 0, // TODO: Implement when invoice data is available
 		"reservas_activas":    0, // TODO: Implement when reservation data is available
 	}

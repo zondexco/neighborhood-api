@@ -367,24 +367,27 @@ func (r *ReservationRepositoryImpl) Delete(ctx context.Context, reservationID, c
 	return nil
 }
 
-// ExistsOverlap valida solapamiento de reservas activas para un espacio
+// ExistsOverlap valida solapamiento de reservas activas para un espacio.
+// Usa EXISTS para cortocircuitar en la primera fila encontrada.
 func (r *ReservationRepositoryImpl) ExistsOverlap(ctx context.Context, espacioID, condominioID string, start, end time.Time) (bool, error) {
 	query := `
-		SELECT COUNT(1)
-		FROM reserva
-		WHERE id_espacio = $1
-			AND id_condominio = $2
-			AND estado NOT IN ('cancelado')
-			AND fecha_inicio < $4
-			AND fecha_fin > $3
+		SELECT EXISTS (
+			SELECT 1
+			FROM reserva
+			WHERE id_espacio = $1
+				AND id_condominio = $2
+				AND estado NOT IN ('cancelado', 'rechazada')
+				AND fecha_inicio < $4
+				AND fecha_fin > $3
+		)
 	`
 
-	var count int
-	if err := r.db.QueryRowContext(ctx, query, espacioID, condominioID, start, end).Scan(&count); err != nil {
+	var exists bool
+	if err := r.db.QueryRowContext(ctx, query, espacioID, condominioID, start, end).Scan(&exists); err != nil {
 		return false, err
 	}
 
-	return count > 0, nil
+	return exists, nil
 }
 
 // GetByEspacio obtiene reservas de un espacio común

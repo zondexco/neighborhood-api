@@ -179,6 +179,7 @@ type PackageRepository interface {
 // NotificationRepository interfaz para notificaciones in-app
 type NotificationRepository interface {
 	Create(ctx context.Context, notif *models.Notification) error
+	CreateBatch(ctx context.Context, notifs []*models.Notification) error
 	ListByUser(ctx context.Context, userID, condominioID string, page, pageSize int) ([]*models.Notification, int, error)
 	MarkRead(ctx context.Context, notifID, userID string) error
 	MarkAllRead(ctx context.Context, userID, condominioID string) error
