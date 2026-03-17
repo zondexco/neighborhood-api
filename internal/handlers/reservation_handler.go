@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -9,6 +10,7 @@ import (
 
 	"neighborhood-api/internal/services"
 	"neighborhood-api/pkg/dto"
+	pkgerrors "neighborhood-api/pkg/errors"
 	"neighborhood-api/pkg/logger"
 )
 
@@ -58,8 +60,13 @@ func (h *ReservationHandler) Create(c *gin.Context) {
 	// Crear reserva
 	reservation, err := h.service.Create(c.Request.Context(), &req, condominioID.(string), usuarioID.(string))
 	if err != nil {
-		h.logger.WithError(err).Error("error creating reservation")
-		InternalServerError(c, "internal server error")
+		var customErr *pkgerrors.CustomError
+		if errors.As(err, &customErr) {
+			c.JSON(customErr.GetHTTPStatusCode(), gin.H{"message": customErr.Message, "code": string(customErr.Type)})
+		} else {
+			h.logger.WithError(err).Error("error creating reservation")
+			InternalServerError(c, "internal server error")
+		}
 		return
 	}
 

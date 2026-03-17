@@ -12,6 +12,7 @@ import (
 	"neighborhood-api/internal/models"
 	"neighborhood-api/internal/repositories"
 	"neighborhood-api/pkg/dto"
+	pkgerrors "neighborhood-api/pkg/errors"
 )
 
 // ReservationService interfaz para operaciones con reservas
@@ -66,7 +67,7 @@ func (s *ReservationServiceImpl) Create(ctx context.Context, req *dto.CreateRese
 		return nil, err
 	}
 	if exists {
-		return nil, errors.New("ya existe una reserva activa en ese rango horario")
+		return nil, pkgerrors.ConflictErrorf("ya existe una reserva activa en ese rango horario")
 	}
 
 	// Obtener precio de referencia del espacio
@@ -351,15 +352,16 @@ func toReservationResponse(reservation *models.Reservation) *dto.ReservationResp
 	return &dto.ReservationResponse{
 		ID:                reservation.ID,
 		EspacioID:         reservation.EspacioID,
+		EspacioNombre:     reservation.EspacioNombre,
 		UsuarioID:         reservation.UsuarioID,
+		UsuarioNombre:     reservation.UsuarioNombre,
 		ValorBase:         reservation.ValorBase,
 		CostoTotal:        reservation.CostoTotal,
+		FechaSolicitud:    reservation.FechaSolicitud,
 		FechaInicio:       reservation.FechaInicio,
 		FechaFin:          reservation.FechaFin,
 		PersonasEsperadas: personasEsperadas,
 		Estado:            reservation.Estado,
 		CondominioID:      reservation.CondominioID,
-		CreatedAt:         time.Time{},
-		UpdatedAt:         time.Time{},
 	}
 }

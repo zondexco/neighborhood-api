@@ -144,12 +144,16 @@ func (r *ReservationRepositoryImpl) GetByCondominio(ctx context.Context, condomi
 	// Obtener registros
 	offset := (page - 1) * pageSize
 	query := `
-		SELECT id_reserva, id_condominio, id_usuario, id_apartamento, id_espacio,
-		       fecha_solicitud, fecha_inicio, fecha_fin, personas_esperadas, observaciones,
-		       valor_base, costo_total, pagado, estado
-		FROM reserva
-		WHERE id_condominio = $1
-		ORDER BY fecha_inicio DESC
+		SELECT r.id_reserva, r.id_condominio, r.id_usuario, r.id_apartamento, r.id_espacio,
+		       r.fecha_solicitud, r.fecha_inicio, r.fecha_fin, r.personas_esperadas, r.observaciones,
+		       r.valor_base, r.costo_total, r.pagado, r.estado,
+		       COALESCE(ec.nombre, '') AS espacio_nombre,
+		       COALESCE(u.nombres || ' ' || u.apellidos, '') AS usuario_nombre
+		FROM reserva r
+		LEFT JOIN espacio_comun ec ON ec.id_espacio = r.id_espacio AND ec.id_condominio = r.id_condominio
+		LEFT JOIN usuario u ON u.id_usuario = r.id_usuario
+		WHERE r.id_condominio = $1
+		ORDER BY r.fecha_inicio DESC
 		LIMIT $2 OFFSET $3
 	`
 
@@ -177,6 +181,8 @@ func (r *ReservationRepositoryImpl) GetByCondominio(ctx context.Context, condomi
 			&reservation.CostoTotal,
 			&reservation.Pagado,
 			&reservation.Estado,
+			&reservation.EspacioNombre,
+			&reservation.UsuarioNombre,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -204,12 +210,16 @@ func (r *ReservationRepositoryImpl) GetByUsuario(ctx context.Context, usuarioID,
 	// Obtener registros
 	offset := (page - 1) * pageSize
 	query := `
-		SELECT id_reserva, id_condominio, id_usuario, id_apartamento, id_espacio,
-		       fecha_solicitud, fecha_inicio, fecha_fin, personas_esperadas, observaciones,
-		       valor_base, costo_total, pagado, estado
-		FROM reserva
-		WHERE id_usuario = $1 AND id_condominio = $2
-		ORDER BY fecha_inicio DESC
+		SELECT r.id_reserva, r.id_condominio, r.id_usuario, r.id_apartamento, r.id_espacio,
+		       r.fecha_solicitud, r.fecha_inicio, r.fecha_fin, r.personas_esperadas, r.observaciones,
+		       r.valor_base, r.costo_total, r.pagado, r.estado,
+		       COALESCE(ec.nombre, '') AS espacio_nombre,
+		       COALESCE(u.nombres || ' ' || u.apellidos, '') AS usuario_nombre
+		FROM reserva r
+		LEFT JOIN espacio_comun ec ON ec.id_espacio = r.id_espacio AND ec.id_condominio = r.id_condominio
+		LEFT JOIN usuario u ON u.id_usuario = r.id_usuario
+		WHERE r.id_usuario = $1 AND r.id_condominio = $2
+		ORDER BY r.fecha_inicio DESC
 		LIMIT $3 OFFSET $4
 	`
 
@@ -237,6 +247,8 @@ func (r *ReservationRepositoryImpl) GetByUsuario(ctx context.Context, usuarioID,
 			&reservation.CostoTotal,
 			&reservation.Pagado,
 			&reservation.Estado,
+			&reservation.EspacioNombre,
+			&reservation.UsuarioNombre,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -261,12 +273,16 @@ func (r *ReservationRepositoryImpl) GetByApartment(ctx context.Context, apartmen
 
 	offset := (page - 1) * pageSize
 	query := `
-		SELECT id_reserva, id_condominio, id_usuario, id_apartamento, id_espacio,
-		       fecha_solicitud, fecha_inicio, fecha_fin, personas_esperadas, observaciones,
-		       valor_base, costo_total, pagado, estado
-		FROM reserva
-		WHERE id_apartamento = $1 AND id_condominio = $2
-		ORDER BY fecha_inicio DESC
+		SELECT r.id_reserva, r.id_condominio, r.id_usuario, r.id_apartamento, r.id_espacio,
+		       r.fecha_solicitud, r.fecha_inicio, r.fecha_fin, r.personas_esperadas, r.observaciones,
+		       r.valor_base, r.costo_total, r.pagado, r.estado,
+		       COALESCE(ec.nombre, '') AS espacio_nombre,
+		       COALESCE(u.nombres || ' ' || u.apellidos, '') AS usuario_nombre
+		FROM reserva r
+		LEFT JOIN espacio_comun ec ON ec.id_espacio = r.id_espacio AND ec.id_condominio = r.id_condominio
+		LEFT JOIN usuario u ON u.id_usuario = r.id_usuario
+		WHERE r.id_apartamento = $1 AND r.id_condominio = $2
+		ORDER BY r.fecha_inicio DESC
 		LIMIT $3 OFFSET $4
 	`
 
@@ -294,6 +310,8 @@ func (r *ReservationRepositoryImpl) GetByApartment(ctx context.Context, apartmen
 			&reservation.CostoTotal,
 			&reservation.Pagado,
 			&reservation.Estado,
+			&reservation.EspacioNombre,
+			&reservation.UsuarioNombre,
 		); err != nil {
 			return nil, 0, err
 		}

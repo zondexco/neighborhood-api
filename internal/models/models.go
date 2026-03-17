@@ -76,6 +76,9 @@ type Reservation struct {
 	CostoTotal        *float64  `db:"costo_total" json:"costo_total"`
 	Pagado            bool      `db:"pagado" json:"pagado"`
 	Estado            string    `db:"estado" json:"estado"`
+	// Populated via JOIN in list queries — not stored in DB
+	EspacioNombre string `db:"-" json:"-"`
+	UsuarioNombre string `db:"-" json:"-"`
 }
 
 // Space representa un espacio comun

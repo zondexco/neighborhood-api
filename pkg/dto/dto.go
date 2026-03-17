@@ -180,9 +180,12 @@ type UpdateReservationRequest struct {
 type ReservationResponse struct {
 	ID                string    `json:"id"`
 	EspacioID         string    `json:"espacio_id"`
+	EspacioNombre     string    `json:"espacio_nombre,omitempty"`
 	UsuarioID         string    `json:"usuario_id"`
+	UsuarioNombre     string    `json:"usuario_nombre,omitempty"`
 	ValorBase         *float64  `json:"valor_base,omitempty"`
 	CostoTotal        *float64  `json:"costo_total,omitempty"`
+	FechaSolicitud    time.Time `json:"fecha_solicitud"`
 	FechaInicio       time.Time `json:"fecha_inicio"`
 	FechaFin          time.Time `json:"fecha_fin"`
 	PersonasEsperadas int       `json:"personas_esperadas"`
